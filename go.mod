@@ -1,4 +1,4 @@
-module alma-ssz
+module alma.local/ssz
 
 go 1.21
 

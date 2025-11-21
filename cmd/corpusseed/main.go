@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"alma-ssz/internal/corpus"
-	"alma-ssz/internal/targets"
+	"alma.local/ssz/internal/corpus"
+	"alma.local/ssz/internal/targets"
 )
 
 var (

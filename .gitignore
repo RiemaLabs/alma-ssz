@@ -15,4 +15,4 @@ main.*.go
 
 # Generated SSZ encoders
 generated/
-*** End Patch
+agent.md

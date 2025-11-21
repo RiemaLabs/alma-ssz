@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"alma-ssz/internal/corpus"
-	"alma-ssz/internal/oracle"
+	"alma.local/ssz/internal/corpus"
+	"alma.local/ssz/internal/oracle"
 )
 
 const seedLimit = 256

@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"alma-ssz/internal/targets"
+	"alma.local/ssz/internal/targets"
 )
 
 func main() {
