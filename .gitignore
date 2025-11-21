@@ -1,0 +1,18 @@
+bin/
+dist/
+*.test
+*.out
+*.cover
+coverage.*
+.DS_Store
+
+# Local worktree inputs / build outputs
+workspace/
+corpus/
+build/
+fuzz/testdata/
+main.*.go
+
+# Generated SSZ encoders
+generated/
+*** End Patch

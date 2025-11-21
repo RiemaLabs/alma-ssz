@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Attestation",
+    "import": "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1",
+    "type": "Attestation"
+  },
+  {
+    "name": "BeaconBlockBody",
+    "import": "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1",
+    "type": "BeaconBlockBody"
+  },
+  {
+    "name": "SignedBeaconBlock",
+    "import": "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1",
+    "type": "SignedBeaconBlock"
+  },
+  {
+    "name": "IndexedAttestation",
+    "import": "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1",
+    "type": "IndexedAttestation"
+  }
+]
