@@ -36,3 +36,47 @@ To materialize the raw SSZ seeds (for archiving or debugging), run:
 ```bash
 go run ./cmd/corpusseed -out corpus/export -limit 256 -format zip
 ```
+
+## Regression Testing Workflow
+
+This project includes a workflow to test historical bugs from `fastssz`. The process uses patches to inject a bug and a generic fuzzing script to test for it.
+
+### Scripts
+
+- `scripts/bug_toggle.sh`: Activates or deactivates a bug by applying or reverting a patch in the `workspace/fastssz` directory.
+- `scripts/run_fuzz.sh`: A generic script to run a round-trip fuzz test for any SSZ struct defined in the configuration.
+
+### Available Bugs
+
+- `ex1`: Trailing-byte/offset bug.
+- `ex2`: Bitvector dirty-padding bug.
+
+### Example Workflow: Testing the Trailing-Offset Bug
+
+Here is a step-by-step guide to test for bug `ex1` on the `SignedBeaconBlock` struct.
+
+**1. Activate the Bug**
+
+Introduce the bug by applying the `ex1` patch in reverse.
+
+```bash
+./scripts/bug_toggle.sh activate ex1
+```
+
+**2. Run the Fuzz Tester**
+
+Run the fuzzer against the `SignedBeaconBlock` struct. The harness will quickly find an input that causes a non-roundtrip due to the bug.
+
+```bash
+./scripts/run_fuzz.sh SignedBeaconBlock 15s
+```
+
+The fuzzer should exit with an error and save a failing input to `fuzz/testdata/FuzzSignedBeaconBlockRoundTrip/<hash>`.
+
+**3. Deactivate the Bug**
+
+Revert the `fastssz` workspace to its clean state.
+
+```bash
+./scripts/bug_toggle.sh deactivate ex1
+```

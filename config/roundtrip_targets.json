@@ -18,5 +18,10 @@
     "name": "IndexedAttestation",
     "import": "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1",
     "type": "IndexedAttestation"
+  },
+  {
+    "name": "BeaconState",
+    "import": "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1",
+    "type": "BeaconState"
   }
 ]

@@ -3,8 +3,9 @@
 package fuzz
 
 import (
-	v1alpha1 "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1"
 	"testing"
+
+	v1alpha1 "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1"
 )
 
 func FuzzAttestationRoundTrip(f *testing.F) {
@@ -21,4 +22,8 @@ func FuzzSignedBeaconBlockRoundTrip(f *testing.F) {
 
 func FuzzIndexedAttestationRoundTrip(f *testing.F) {
 	runRoundTripFuzz[v1alpha1.IndexedAttestation, *v1alpha1.IndexedAttestation](f, "IndexedAttestation")
+}
+
+func FuzzBeaconStateRoundTrip(f *testing.F) {
+	runRoundTripFuzz[v1alpha1.BeaconState, *v1alpha1.BeaconState](f, "BeaconState")
 }
