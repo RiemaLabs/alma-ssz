@@ -1,0 +1,26 @@
+commit df733d3d0fff9bdd54066a56b3319686c3564a1c
+Author: trackoor <hanzhi@riema.xyz>
+Date:   Sun Nov 30 14:26:18 2025 -0800
+
+    Revert boolean validation to introduce Dirty Boolean bug
+
+diff --git a/sszgen/generator/unmarshal.go b/sszgen/generator/unmarshal.go
+index dd3f78b..a6bca59 100644
+--- a/sszgen/generator/unmarshal.go
++++ b/sszgen/generator/unmarshal.go
+@@ -100,14 +100,7 @@ func (v *Value) unmarshal(dst string) string {
+ 		})
+ 
+ 	case *Bool:
+-		// For now we are doing the boolean check here to avoid having
+-		// to return an error during unmarshal value since this is the only type
+-		// which can fail for now.
+-		// https://github.com/ferranbt/fastssz/issues/222
+-		tmpl := `if err = ssz.IsValidBool(buf); err != nil {
+-			return
+-		}
+-		::.{{.name}}, buf = ssz.UnmarshallValue[bool](buf)`
++		tmpl := `::.{{.name}}, buf = ssz.UnmarshallValue[bool](buf)`
+ 		return execTmpl(tmpl, map[string]interface{}{
+ 			"name": v.name,
+ 		})

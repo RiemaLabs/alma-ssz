@@ -1,0 +1,125 @@
+commit cbe08b74765278c9565cc8f0777922818c9b4881
+Author: trackoor <hanzhi@riema.xyz>
+Date:   Sun Nov 30 13:14:43 2025 -0800
+
+    Fix Bitvector Dirty Padding Vulnerability
+
+diff --git b/demonstration.go a/demonstration.go
+deleted file mode 100644
+index 954c60c..0000000
+--- b/demonstration.go
++++ /dev/null
+@@ -1,25 +0,0 @@
+-package ssz
+-
+-import "alma.local/ssz/tracer"
+-
+-import "fmt"
+-
+-// DemonstrateBranching is a helper to show CSVV context sensitivity.
+-// It assigns to 'x' in two different blocks.
+-func DemonstrateBranching(flag bool) {
+-	var x int
+-	if flag {
+-		x = 10
+-		tracer.Record(10038700022708548091, tracer.ToScalar(x))
+-		tracer.Record(10038700022708548091, tracer.ToScalar(x))
+-		fmt.Printf("Branch A: x=%d\n", x)
+-	} else {
+-		x = 20
+-		tracer.Record(10037866592894553378, tracer.ToScalar(x))
+-		tracer.Record(10037866592894553378, tracer.ToScalar(x))
+-		fmt.Printf("Branch B: x=%d\n", x)
+-	}
+-	// prevent "unused variable" error if checks are strict,
+-	// though the instrumentor might add usages.
+-	_ = x
+-}
+diff --git b/encode.go a/encode.go
+index 43d5ce3..88f9ea4 100644
+--- b/encode.go
++++ a/encode.go
+@@ -208,27 +208,6 @@ func Extend[T any](b []T, needLen uint64) []T {
+ 
+ const bytesPerLengthOffset = 4
+ 
+-// ValidateBitvector validates that the bitvector padding bits are zero
+-func ValidateBitvector(buf []byte, bitSize uint64) error {
+-	if len(buf) == 0 {
+-		return nil
+-	}
+-	if bitSize%8 == 0 {
+-		return nil
+-	}
+-	// Check padding bits in the last byte
+-	lastByte := buf[len(buf)-1]
+-	// The bits we want to check are the high bits.
+-	// Number of used bits in the last byte = bitSize % 8.
+-	usedBits := bitSize % 8
+-	// Mask for unused bits. Example: usedBits=4. 11111111 << 4 = 11110000.
+-	mask := byte(0xFF << usedBits)
+-	if lastByte&mask != 0 {
+-		return fmt.Errorf("bitvector padding bits are not zero")
+-	}
+-	return nil
+-}
+-
+ // ValidateBitlist validates that the bitlist is correct
+ func ValidateBitlist(buf []byte, bitLimit uint64) error {
+ 	byteLen := len(buf)
+diff --git b/sszgen/generator/generator.go a/sszgen/generator/generator.go
+index 8619cad..36ff697 100644
+--- b/sszgen/generator/generator.go
++++ a/sszgen/generator/generator.go
+@@ -1262,14 +1262,7 @@ func (e *env) parseASTFieldType(name, tags string, expr ast.Expr) (*Value, error
+ 			if !tailDim.IsVector() {
+ 				return nil, fmt.Errorf("bitvector tag parse failed (no ssz-size for last dim) %s, err=%s", name, err)
+ 			}
+-			var bitSize uint64
+-			suffix := strings.TrimPrefix(sel, "Bitvector")
+-			if len(suffix) > 0 {
+-				if bs, err := strconv.ParseUint(suffix, 10, 64); err == nil {
+-					bitSize = bs
+-				}
+-			}
+-			return &Value{typ: &Bytes{Size: tailDim.VectorLen(), IsBitvector: true, BitSize: bitSize}}, nil
++			return &Value{typ: &Bytes{Size: tailDim.VectorLen()}}, nil
+ 		}
+ 		// external reference
+ 		vv, err := e.encodeItem(sel, tags)
+diff --git b/sszgen/generator/ir.go a/sszgen/generator/ir.go
+index 7687bfb..4ce84b4 100644
+--- b/sszgen/generator/ir.go
++++ a/sszgen/generator/ir.go
+@@ -31,11 +31,9 @@ type Bool struct {
+ func (b *Bool) isValue() {}
+ 
+ type Bytes struct {
+-	Size        Size
+-	IsList      bool
+-	IsGoDyn     bool // this is a fixed byte array but that is represented as a vector
+-	BitSize     uint64
+-	IsBitvector bool
++	Size    Size
++	IsList  bool
++	IsGoDyn bool // this is a fixed byte array but that is represented as a vector
+ }
+ 
+ func (b *Bytes) IsFixed() bool {
+diff --git b/sszgen/generator/unmarshal.go a/sszgen/generator/unmarshal.go
+index dd3f78b..635adce 100644
+--- b/sszgen/generator/unmarshal.go
++++ a/sszgen/generator/unmarshal.go
+@@ -33,12 +33,6 @@ func (v *Value) unmarshal(dst string) string {
+ 
+ 	case *Bytes:
+ 		if !obj.IsList && !obj.IsGoDyn {
+-			if obj.IsBitvector && obj.BitSize > 0 {
+-				return fmt.Sprintf(`buf = ssz.UnmarshalFixedBytes(::.%s[:], buf)
+-		if err = ssz.ValidateBitvector(::.%s[:], %d); err != nil {
+-			return nil, err
+-		}`, v.name, v.name, obj.BitSize)
+-			}
+ 			return fmt.Sprintf("buf = ssz.UnmarshalFixedBytes(::.%s[:], buf)", v.name)
+ 		}
+ 

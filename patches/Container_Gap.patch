@@ -1,0 +1,23 @@
+commit e99cc6c20039d789f2ccdd277ef4591bc43c092f
+Author: trackoor <hanzhi@riema.xyz>
+Date:   Sun Nov 30 14:31:05 2025 -0800
+
+    Remove offset validation to introduce Container Gap bug
+
+diff --git a/encode.go b/encode.go
+index 43d5ce3..4c38a01 100644
+--- a/encode.go
++++ b/encode.go
+@@ -387,9 +387,9 @@ func (o *OffsetMarker) ReadOffset(buf []byte) (uint64, []byte, error) {
+ 		return 0, nil, ErrOffset
+ 	}
+ 	if o.LastOffset == nil {
+-		if offset != o.FixedSize {
+-			return 0, nil, ErrInvalidVariableOffset
+-		}
++		// if offset != o.FixedSize {
++		// 	return 0, nil, ErrInvalidVariableOffset
++		// }
+ 	} else {
+ 		if offset < *o.LastOffset {
+ 			return 0, nil, ErrOffsetNotIncreasing

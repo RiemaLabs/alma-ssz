@@ -32,7 +32,7 @@ func RoundTrip[T any, PT RoundTripTarget[T]](data []byte) error {
 	}
 
 	if !bytes.Equal(out, data) {
-		return fmt.Errorf("oracle: non-canonical roundtrip (input=%d output=%d)", len(data), len(out))
+		return fmt.Errorf("oracle: bug triggered! non-canonical roundtrip (dirty padding?) (input=%d output=%d)", len(data), len(out))
 	}
 	return nil
 }
