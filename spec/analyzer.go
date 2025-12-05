@@ -32,10 +32,6 @@ func (a *GenericAnalyzer) GetDomains(instance interface{}) ([]domains.Domain, er
 		fieldName := field.Name
 		fieldType := field.Type
 
-		// Skip unexported fields
-		if field.PkgPath != "" {
-			continue
-		}
 
 		// Skip fields that are generic internal helpers if any (naive check)
 		if strings.HasPrefix(fieldName, "_") {
@@ -66,12 +62,36 @@ func (a *GenericAnalyzer) GetDomains(instance interface{}) ([]domains.Domain, er
 		case reflect.Array:
 			// Fixed-size array (e.g., [32]byte, [4]byte)
 			if fieldType.Elem().Kind() == reflect.Uint8 {
-				// Content aspect for byte arrays
-				domain.Aspects = append(domain.Aspects, domains.FieldAspect{
-					ID:          "ElementValue",
-					Description: fmt.Sprintf("Value of each element in %s", fieldName),
-					Buckets:     ByteContentBuckets,
-				})
+				// Check for Bitvector[4] (which is [1]byte in Go)
+				if fieldType.Len() == 1 { // This implies a Bitvector4 or similar, where padding bits might matter
+					domain.Aspects = append(domain.Aspects, domains.FieldAspect{
+						ID:          "Padding",
+						Description: fmt.Sprintf("Padding bits for bitvector %s", fieldName),
+						Buckets: []domains.Bucket{
+							{
+								ID:          "CanonicalPadding",
+								Description: "Zero padding bits",
+								Range:       domains.Range{Min: 0, Max: 0}, // Signal to Concretizer to ensure zero padding
+								Tag:         "canonical",
+							},
+							{
+								ID:          "DirtyPadding",
+								Description: "Non-zero padding bits",
+								Range:       domains.Range{Min: 1, Max: 1}, // Signal to Concretizer to introduce dirty padding
+								Tag:         "bug",
+							},
+						},
+					})
+					// For [1]byte bitvectors, the "Padding" aspect sufficiently covers the "value".
+					// Do not add a separate "ElementValue" aspect to avoid conflicts.
+				} else {
+					// Content aspect for other byte arrays
+					domain.Aspects = append(domain.Aspects, domains.FieldAspect{
+						ID:          "ElementValue",
+						Description: fmt.Sprintf("Value of each element in %s", fieldName),
+						Buckets:     ByteContentBuckets,
+					})
+				}
 			} else {
 				// Array of other things (e.g., [4]Checkpoint) - recursion handled by Concretizer
 				domain.Aspects = append(domain.Aspects, domains.FieldAspect{
@@ -125,12 +145,28 @@ func (a *GenericAnalyzer) GetDomains(instance interface{}) ([]domains.Domain, er
 				Buckets:     validLengthBuckets,
 			})
 
-			// Add Offset Aspect for variable length fields
+			// Add Offset Aspect for variable length fields based on SSZ specification (from alma_ccs26.pdf)
 			domain.Aspects = append(domain.Aspects, domains.FieldAspect{
 				ID:          "Offset",
-				Description: fmt.Sprintf("Offset manipulation for slice %s", fieldName),
-				Buckets:     OffsetBuckets,
+				Description: fmt.Sprintf("Offset contiguity manipulation for slice %s", fieldName),
+				Buckets: []domains.Bucket{
+					{
+						ID:          "CanonicalOffset",
+						Description: "Generate a valid, contiguous offset (Offset_n = Offset_n-1 + Length_n-1)",
+						Range:       domains.Range{Min: 0, Max: 0}, // Signal to Concretizer to generate canonical offset
+						Tag:         "canonical",
+					},
+					{
+						ID:          "GapOffset",
+						Description: "Generate an offset that creates a gap (violates contiguity: Offset_n != Offset_n-1 + Length_n-1)",
+						Range:       domains.Range{Min: 4, Max: 100}, // Signal to Concretizer to generate a gap size between 4 and 100 bytes
+						Tag:         "bug",
+					},
+				},
 			})
+
+
+
 
 			if fieldType.Elem().Kind() == reflect.Uint8 {
 				// Element content aspect for byte slices

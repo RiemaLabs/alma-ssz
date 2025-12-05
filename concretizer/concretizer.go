@@ -96,9 +96,20 @@ func (c *Concretizer) concretizeStruct(structVal reflect.Value, matrix *encoding
 					return nil, fmt.Errorf("bucket ID '%s' not found for aspect '%s' of field '%s'", chosenBucketID, aspect.ID, field.Name)
 				}
 			} else {
-				// Default behavior if aspect not explicitly chosen (e.g. for nested structs or unhandled aspects)
-				if len(aspect.Buckets) > 0 {
-					chosenBucket = aspect.Buckets[rand.Intn(len(aspect.Buckets))] // Random default for this aspect
+				// Default behavior if aspect not explicitly chosen
+				if aspect.ID == "Padding" {
+					// Default "Padding" to "CanonicalPadding" if not explicitly chosen
+					for _, b := range aspect.Buckets {
+						if b.ID == "CanonicalPadding" {
+							chosenBucket = b
+							break
+						}
+					}
+					if chosenBucket.ID == "" {
+						return nil, fmt.Errorf("CanonicalPadding bucket not found for Padding aspect of field '%s'", field.Name)
+					}
+				} else if len(aspect.Buckets) > 0 {
+					chosenBucket = aspect.Buckets[rand.Intn(len(aspect.Buckets))] // Random default for other aspects
 				} else {
 					chosenBucket = domains.Bucket{ID: "Default", Range: domains.Range{Min: 0, Max: 0}} // Fallback empty bucket
 				}
@@ -157,12 +168,24 @@ func (c *Concretizer) applyAspect(val reflect.Value, aspectID domains.AspectID, 
 			return nil, err
 		}
 	case "Offset":
-		// Handle offset mutations based on bucket range
-		if bucket.Range.Min > 0 {
+		// Handle offset mutations based on bucket ID
+		switch bucket.ID {
+		case "CanonicalOffset":
+			// Signal to the mutation applier that no explicit gap is needed;
+			// offsets should be generated canonically.
+			// This might be a no-op or generate a special mutation with GapSize: 0.
+			mutations = append(mutations, Mutation{
+				Type:      MutationGap,
+				FieldName: fieldStruct.Name,
+				GapSize:   0, // Signal no gap, canonical behavior
+			})
+		case "GapOffset":
+			// Generate a MutationGap with size from bucket.Range
 			gapSize := 0
 			if bucket.Range.Min == bucket.Range.Max {
 				gapSize = int(bucket.Range.Min)
 			} else {
+				// Sample a random gap size from the specified range
 				gapSize = int(bucket.Range.Min) + rand.Intn(int(bucket.Range.Max-bucket.Range.Min+1))
 			}
 			
@@ -171,6 +194,22 @@ func (c *Concretizer) applyAspect(val reflect.Value, aspectID domains.AspectID, 
 				FieldName: fieldStruct.Name,
 				GapSize:   gapSize,
 			})
+		}
+	case "Padding":
+		// Handle padding mutations based on bucket ID
+		switch bucket.ID {
+		case "CanonicalPadding":
+			// Set the byte value such that high-order bits are zero.
+			// The original value has already been set by Concretizer.
+			// Here we just ensure padding bits are zero.
+			if val.CanSet() && val.Kind() == reflect.Uint8 {
+				val.SetUint(val.Uint() & 0x0F) // Assuming Bitvector[4], clear upper 4 bits
+			}
+		case "DirtyPadding":
+			// Set the byte value such that high-order bits are non-zero (0x1F as per paper).
+			if val.CanSet() && val.Kind() == reflect.Uint8 {
+				val.SetUint(0x1F) // Set to 0x1F to introduce dirty padding as in the paper
+			}
 		}
 	case "Default": // For structs/arrays of structs, default means recurse
 		switch val.Kind() {
@@ -201,8 +240,10 @@ func (c *Concretizer) concretizeStructRecursive(val reflect.Value) error {
 			case reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8:
 				c.setUint(f, domains.Range{Min: 0, Max: 100}) // Random small value
 			case reflect.Array:
-				if f.Type().Elem().Kind() == reflect.Uint8 {
-					c.setElementValue(f, domains.Range{Min: 0, Max: 255}) // Random bytes
+				if f.Type().Elem().Kind() == reflect.Uint8 && f.Len() == 1 { // For [1]byte (bitvector)
+					f.Index(0).SetUint(0x00) // Default to canonical (zero padding)
+				} else if f.Type().Elem().Kind() == reflect.Uint8 {
+					c.setElementValue(f, domains.Range{Min: 0, Max: 255}) // Random bytes for other byte arrays
 				}
 			case reflect.Struct:
 				c.concretizeStructRecursive(f)

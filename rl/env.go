@@ -142,29 +142,19 @@ func (env *FuzzingEnv) Step(actions []Action) (*State, float64, bool, error) { /
 batchTraces := make([][]analyzer.TraceEntry, 0, env.BatchSize)
 
 	for _, action := range actions { // Process each action in the batch
-		// 1. Convert Action (bucket choice) to a partial EncodingMatrix for the Concretizer
+		// 1. Convert Action (chosen by ID) to a partial EncodingMatrix for the Concretizer
 		matrix := encoding.NewEncodingMatrix(reflect.TypeOf(env.TargetSchema).Elem().Name())
-		// The Action passed here is the agent's action, not an EncodingContextAction
-		// So we need to convert it or use the appropriate fields.
-		// This implies a mapping from the agent's Action to the EncodingContextAction.
-		// For now, let's assume agent.Action.Param1 is the index into EncodingCtx.Actions
-		if action.MutationType == concretizer.MutationGap || action.MutationType == concretizer.MutationValue {
-			if action.Param1 < 0 || action.Param1 >= env.EncodingCtx.ActionCount() {
-				fmt.Printf("Warning: Invalid action.Param1 (%d) for action type %s\n", action.Param1, action.MutationType)
-				batchRuntimeSignature.NonBugErrorCount++
-				continue
-			}
-			encCtxAction, err := env.EncodingCtx.GetActionByIndex(action.Param1)
-			if err != nil {
-				fmt.Printf("Warning: Error getting EncodingContextAction: %v\n", err)
-				batchRuntimeSignature.NonBugErrorCount++
-				continue
-			}
-			matrix.Select(encCtxAction.FieldName, encCtxAction.AspectID, encCtxAction.BucketID)
+		
+		encCtxAction, err := env.EncodingCtx.GetActionByIndex(action.ID)
+		if err != nil {
+			fmt.Printf("Warning: Error getting EncodingContextAction for ID %d: %v\n", action.ID, err)
+			batchRuntimeSignature.NonBugErrorCount++
+			continue
 		}
+		matrix.Select(encCtxAction.FieldName, encCtxAction.AspectID, encCtxAction.BucketID)
 
-		// 2. Concretize the input
-		newInput := reflect.New(reflect.TypeOf(env.TargetSchema).Elem()).Interface()
+	// Create a new instance of the target schema
+	newInput := reflect.New(reflect.TypeOf(env.TargetSchema).Elem()).Interface()
 		mutations, err := env.Concretizer.Concretize(newInput, matrix, env.Domains)
 		if err != nil {
 			// Penalty for failed concretization
@@ -183,6 +173,7 @@ batchTraces := make([][]analyzer.TraceEntry, 0, env.BatchSize)
 			batchRuntimeSignature.NonBugErrorCount++ // Count this as a non-bug error for the batch
 			continue // Skip execution if not a marshaler
 		}
+		
 		sszBytes, err := marshaler.MarshalSSZ() 
 		if err != nil {
 			batchReward -= 5.0
