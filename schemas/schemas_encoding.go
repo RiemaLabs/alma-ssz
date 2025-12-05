@@ -17,8 +17,12 @@ func (b *BitvectorStruct) MarshalSSZ() ([]byte, error) {
 func (b *BitvectorStruct) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 	dst = buf
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (0) 'ValidationBits'
 	dst = append(dst, b.ValidationBits[:]...)
+
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 
 	return
 }
@@ -31,8 +35,10 @@ func (b *BitvectorStruct) UnmarshalSSZ(buf []byte) error {
 // UnmarshalSSZTail unmarshals the BitvectorStruct object and returns the remaining bufferº
 func (b *BitvectorStruct) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 	size := len(buf)
+	tracer.Record(8402617314992080774, tracer.ToScalar(size))
 	tracer.Record(999, tracer.ToScalar(size)) // Trace 1: Input size
 	fixedSize := b.fixedSize()
+	tracer.Record(194556321646530282, tracer.ToScalar(fixedSize))
 	if size < fixedSize {
 		return nil, ssz.ErrSize
 	}
@@ -40,6 +46,7 @@ func (b *BitvectorStruct) UnmarshalSSZTail(buf []byte) (rest []byte, err error) 
 
 	// Field (0) 'ValidationBits'
 	buf = ssz.UnmarshalFixedBytes(b.ValidationBits[:], buf)
+	tracer.Record(16046195392382727211, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("ValidationBits"))), tracer.ToBytesValue(b.ValidationBits[:]))
 
 	tracer.Record(777, tracer.ToScalar(len(buf)))
@@ -54,6 +61,7 @@ func (b *BitvectorStruct) fixedSize() int {
 // SizeSSZ returns the ssz encoded size in bytes for the BitvectorStruct object
 func (b *BitvectorStruct) SizeSSZ() (size int) {
 	size = b.fixedSize()
+	tracer.Record(9993598622769301344, tracer.ToScalar(size))
 	return
 }
 
@@ -65,6 +73,8 @@ func (b *BitvectorStruct) HashTreeRoot() ([32]byte, error) {
 // HashTreeRootWith ssz hashes the BitvectorStruct object with a hasher
 func (b *BitvectorStruct) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	indx := hh.Index()
+
+	tracer.Record(9124548103629576633, tracer.ToScalar(indx))
 
 	// Field (0) 'ValidationBits'
 	hh.PutBytes(b.ValidationBits[:])
@@ -78,6 +88,18 @@ func (b *BitvectorStruct) GetTree() (*ssz.Node, error) {
 	return ssz.ProofTree(b)
 }
 
+// Canonicalize returns a canonical version of BitvectorStruct
+func (b *BitvectorStruct) Canonicalize() (ssz.Marshaler, error) {
+	// Create a copy to avoid modifying the original
+	canonicalB := &BitvectorStruct{}
+	*canonicalB = *b
+
+	// Clean padding bits: clear the high-order 4 bits (0xF0 mask)
+	canonicalB.ValidationBits[0] = canonicalB.ValidationBits[0] & 0x0F
+
+	return canonicalB, nil
+}
+
 // MarshalSSZ ssz marshals the BooleanStruct object
 func (b *BooleanStruct) MarshalSSZ() ([]byte, error) {
 	return ssz.MarshalSSZ(b)
@@ -87,8 +109,12 @@ func (b *BooleanStruct) MarshalSSZ() ([]byte, error) {
 func (b *BooleanStruct) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 	dst = buf
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (0) 'Val'
 	dst = ssz.MarshalValue(dst, b.Val)
+
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 
 	return
 }
@@ -101,8 +127,10 @@ func (b *BooleanStruct) UnmarshalSSZ(buf []byte) error {
 // UnmarshalSSZTail unmarshals the BooleanStruct object and returns the remaining bufferº
 func (b *BooleanStruct) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 	size := len(buf)
+	tracer.Record(8402617314992080774, tracer.ToScalar(size))
 	tracer.Record(999, tracer.ToScalar(size)) // Trace 1: Input size
 	fixedSize := b.fixedSize()
+	tracer.Record(194556321646530282, tracer.ToScalar(fixedSize))
 	if size < fixedSize {
 		return nil, ssz.ErrSize
 	}
@@ -110,6 +138,7 @@ func (b *BooleanStruct) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 
 	// Field (0) 'Val'
 	b.Val, buf = ssz.UnmarshallValue[bool](buf)
+	tracer.Record(16046195392382727211, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("Val"))), tracer.ToScalar(b.Val))
 
 	tracer.Record(777, tracer.ToScalar(len(buf)))
@@ -124,6 +153,7 @@ func (b *BooleanStruct) fixedSize() int {
 // SizeSSZ returns the ssz encoded size in bytes for the BooleanStruct object
 func (b *BooleanStruct) SizeSSZ() (size int) {
 	size = b.fixedSize()
+	tracer.Record(9993598622769301344, tracer.ToScalar(size))
 	return
 }
 
@@ -135,6 +165,8 @@ func (b *BooleanStruct) HashTreeRoot() ([32]byte, error) {
 // HashTreeRootWith ssz hashes the BooleanStruct object with a hasher
 func (b *BooleanStruct) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	indx := hh.Index()
+
+	tracer.Record(9124548103629576633, tracer.ToScalar(indx))
 
 	// Field (0) 'Val'
 	hh.PutBool(b.Val)
@@ -156,17 +188,25 @@ func (g *GapStruct) MarshalSSZ() ([]byte, error) {
 // MarshalSSZTo ssz marshals the GapStruct object to a target array
 func (g *GapStruct) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 	dst = buf
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 	offset := g.fixedSize()
+
+	tracer.Record(17675791446996146504, tracer.ToScalar(offset))
 
 	// Offset (0) 'Data'
 	dst = ssz.WriteOffset(dst, offset)
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (0) 'Data'
 	if size := uint64(len(g.Data)); size > 1024 {
 		err = ssz.ErrBytesLengthFn("GapStruct.Data", size, 1024)
+		tracer.Record(13792041702645271617, tracer.ToScalar(err))
 		return
 	}
 	dst = append(dst, g.Data...)
+
+	tracer.Record(13287582469228152809, tracer.ToScalar(dst))
 
 	return
 }
@@ -179,16 +219,21 @@ func (g *GapStruct) UnmarshalSSZ(buf []byte) error {
 // UnmarshalSSZTail unmarshals the GapStruct object and returns the remaining bufferº
 func (g *GapStruct) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 	size := len(buf)
+	tracer.Record(8402617314992080774, tracer.ToScalar(size))
 	tracer.Record(999, tracer.ToScalar(size)) // Trace 1: Input size
 	fixedSize := g.fixedSize()
+	tracer.Record(194556321646530282, tracer.ToScalar(fixedSize))
 	if size < fixedSize {
 		return nil, ssz.ErrSize
 	}
 	tracer.Record(888, tracer.ToScalar(fixedSize)) // Trace 2: Fixed size
 
 	tail := buf
+	tracer.Record(8400561470327127284, tracer.ToScalar(tail))
 	var o0 uint64
 	marker := ssz.NewOffsetMarker(uint64(size), uint64(fixedSize))
+
+	tracer.Record(13759569719659226616, tracer.ToScalar(marker))
 
 	// Offset (0) 'Data'
 	if o0, _, err = marker.ReadOffset(buf); err != nil {
@@ -212,8 +257,12 @@ func (g *GapStruct) fixedSize() int {
 func (g *GapStruct) SizeSSZ() (size int) {
 	size = g.fixedSize()
 
+	tracer.Record(9993598622769301344, tracer.ToScalar(size))
+
 	// Field (0) 'Data'
 	size += len(g.Data)
+
+	tracer.Record(9993598622769301344, tracer.ToScalar(size))
 
 	return
 }
@@ -227,12 +276,17 @@ func (g *GapStruct) HashTreeRoot() ([32]byte, error) {
 func (g *GapStruct) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	indx := hh.Index()
 
+	tracer.Record(9124548103629576633, tracer.ToScalar(indx))
+
 	// Field (0) 'Data'
 	{
 		elemIndx := hh.Index()
+		tracer.Record(17405718152972083287, tracer.ToScalar(elemIndx))
 		byteLen := uint64(len(g.Data))
+		tracer.Record(14665136328895629076, tracer.ToScalar(byteLen))
 		if byteLen > 1024 {
 			err = ssz.ErrIncorrectListSize
+			tracer.Record(1756680335971179755, tracer.ToScalar(err))
 			return
 		}
 		hh.Append(g.Data)
@@ -257,14 +311,22 @@ func (f *Fork) MarshalSSZ() ([]byte, error) {
 func (f *Fork) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 	dst = buf
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (0) 'PreviousVersion'
 	dst = append(dst, f.PreviousVersion[:]...)
+
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 
 	// Field (1) 'CurrentVersion'
 	dst = append(dst, f.CurrentVersion[:]...)
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (2) 'Epoch'
 	dst = ssz.MarshalValue(dst, f.Epoch)
+
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 
 	return
 }
@@ -277,8 +339,10 @@ func (f *Fork) UnmarshalSSZ(buf []byte) error {
 // UnmarshalSSZTail unmarshals the Fork object and returns the remaining bufferº
 func (f *Fork) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 	size := len(buf)
+	tracer.Record(8402617314992080774, tracer.ToScalar(size))
 	tracer.Record(999, tracer.ToScalar(size)) // Trace 1: Input size
 	fixedSize := f.fixedSize()
+	tracer.Record(194556321646530282, tracer.ToScalar(fixedSize))
 	if size < fixedSize {
 		return nil, ssz.ErrSize
 	}
@@ -286,14 +350,17 @@ func (f *Fork) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 
 	// Field (0) 'PreviousVersion'
 	buf = ssz.UnmarshalFixedBytes(f.PreviousVersion[:], buf)
+	tracer.Record(16046195392382727211, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("PreviousVersion"))), tracer.ToBytesValue(f.PreviousVersion[:]))
 
 	// Field (1) 'CurrentVersion'
 	buf = ssz.UnmarshalFixedBytes(f.CurrentVersion[:], buf)
+	tracer.Record(16046195392382727211, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("CurrentVersion"))), tracer.ToBytesValue(f.CurrentVersion[:]))
 
 	// Field (2) 'Epoch'
 	f.Epoch, buf = ssz.UnmarshallValue[uint64](buf)
+	tracer.Record(16046195392382727211, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("Epoch"))), tracer.ToScalar(f.Epoch))
 
 	tracer.Record(777, tracer.ToScalar(len(buf)))
@@ -308,6 +375,7 @@ func (f *Fork) fixedSize() int {
 // SizeSSZ returns the ssz encoded size in bytes for the Fork object
 func (f *Fork) SizeSSZ() (size int) {
 	size = f.fixedSize()
+	tracer.Record(9993598622769301344, tracer.ToScalar(size))
 	return
 }
 
@@ -319,6 +387,8 @@ func (f *Fork) HashTreeRoot() ([32]byte, error) {
 // HashTreeRootWith ssz hashes the Fork object with a hasher
 func (f *Fork) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	indx := hh.Index()
+
+	tracer.Record(9124548103629576633, tracer.ToScalar(indx))
 
 	// Field (0) 'PreviousVersion'
 	hh.PutBytes(f.PreviousVersion[:])
@@ -347,20 +417,32 @@ func (b *BeaconBlockHeader) MarshalSSZ() ([]byte, error) {
 func (b *BeaconBlockHeader) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 	dst = buf
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (0) 'Slot'
 	dst = ssz.MarshalValue(dst, uint64(b.Slot))
+
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 
 	// Field (1) 'ProposerIndex'
 	dst = ssz.MarshalValue(dst, uint64(b.ProposerIndex))
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (2) 'ParentRoot'
 	dst = append(dst, b.ParentRoot[:]...)
+
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 
 	// Field (3) 'StateRoot'
 	dst = append(dst, b.StateRoot[:]...)
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (4) 'BodyRoot'
 	dst = append(dst, b.BodyRoot[:]...)
+
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 
 	return
 }
@@ -373,8 +455,10 @@ func (b *BeaconBlockHeader) UnmarshalSSZ(buf []byte) error {
 // UnmarshalSSZTail unmarshals the BeaconBlockHeader object and returns the remaining bufferº
 func (b *BeaconBlockHeader) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 	size := len(buf)
+	tracer.Record(8402617314992080774, tracer.ToScalar(size))
 	tracer.Record(999, tracer.ToScalar(size)) // Trace 1: Input size
 	fixedSize := b.fixedSize()
+	tracer.Record(194556321646530282, tracer.ToScalar(fixedSize))
 	if size < fixedSize {
 		return nil, ssz.ErrSize
 	}
@@ -384,6 +468,8 @@ func (b *BeaconBlockHeader) UnmarshalSSZTail(buf []byte) (rest []byte, err error
 	{
 		var val uint64
 		val, buf = ssz.UnmarshallValue[uint64](buf)
+		tracer.Record(2234966005017096466, tracer.ToScalar(buf))
+		tracer.Record(8217666055824790380, tracer.ToScalar(val))
 		b.Slot = Slot(val)
 		tracer.Record(uint64(tracer.Hash([]byte("Slot"))), tracer.ToScalar(val))
 	}
@@ -392,20 +478,25 @@ func (b *BeaconBlockHeader) UnmarshalSSZTail(buf []byte) (rest []byte, err error
 	{
 		var val uint64
 		val, buf = ssz.UnmarshallValue[uint64](buf)
+		tracer.Record(10662212202602360237, tracer.ToScalar(buf))
+		tracer.Record(3130199110550048351, tracer.ToScalar(val))
 		b.ProposerIndex = ValidatorIndex(val)
 		tracer.Record(uint64(tracer.Hash([]byte("ProposerIndex"))), tracer.ToScalar(val))
 	}
 
 	// Field (2) 'ParentRoot'
 	buf = ssz.UnmarshalFixedBytes(b.ParentRoot[:], buf)
+	tracer.Record(10662212202602360237, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("ParentRoot"))), tracer.ToBytesValue(b.ParentRoot[:]))
 
 	// Field (3) 'StateRoot'
 	buf = ssz.UnmarshalFixedBytes(b.StateRoot[:], buf)
+	tracer.Record(10662212202602360237, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("StateRoot"))), tracer.ToBytesValue(b.StateRoot[:]))
 
 	// Field (4) 'BodyRoot'
 	buf = ssz.UnmarshalFixedBytes(b.BodyRoot[:], buf)
+	tracer.Record(10662212202602360237, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("BodyRoot"))), tracer.ToBytesValue(b.BodyRoot[:]))
 
 	tracer.Record(777, tracer.ToScalar(len(buf)))
@@ -420,6 +511,7 @@ func (b *BeaconBlockHeader) fixedSize() int {
 // SizeSSZ returns the ssz encoded size in bytes for the BeaconBlockHeader object
 func (b *BeaconBlockHeader) SizeSSZ() (size int) {
 	size = b.fixedSize()
+	tracer.Record(9993598622769301344, tracer.ToScalar(size))
 	return
 }
 
@@ -431,6 +523,8 @@ func (b *BeaconBlockHeader) HashTreeRoot() ([32]byte, error) {
 // HashTreeRootWith ssz hashes the BeaconBlockHeader object with a hasher
 func (b *BeaconBlockHeader) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	indx := hh.Index()
+
+	tracer.Record(9124548103629576633, tracer.ToScalar(indx))
 
 	// Field (0) 'Slot'
 	hh.PutUint64(uint64(b.Slot))
@@ -465,14 +559,22 @@ func (e *Eth1Data) MarshalSSZ() ([]byte, error) {
 func (e *Eth1Data) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 	dst = buf
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (0) 'DepositRoot'
 	dst = append(dst, e.DepositRoot[:]...)
+
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 
 	// Field (1) 'DepositCount'
 	dst = ssz.MarshalValue(dst, e.DepositCount)
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (2) 'BlockHash'
 	dst = append(dst, e.BlockHash[:]...)
+
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 
 	return
 }
@@ -485,8 +587,10 @@ func (e *Eth1Data) UnmarshalSSZ(buf []byte) error {
 // UnmarshalSSZTail unmarshals the Eth1Data object and returns the remaining bufferº
 func (e *Eth1Data) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 	size := len(buf)
+	tracer.Record(8402617314992080774, tracer.ToScalar(size))
 	tracer.Record(999, tracer.ToScalar(size)) // Trace 1: Input size
 	fixedSize := e.fixedSize()
+	tracer.Record(194556321646530282, tracer.ToScalar(fixedSize))
 	if size < fixedSize {
 		return nil, ssz.ErrSize
 	}
@@ -494,14 +598,17 @@ func (e *Eth1Data) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 
 	// Field (0) 'DepositRoot'
 	buf = ssz.UnmarshalFixedBytes(e.DepositRoot[:], buf)
+	tracer.Record(16046195392382727211, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("DepositRoot"))), tracer.ToBytesValue(e.DepositRoot[:]))
 
 	// Field (1) 'DepositCount'
 	e.DepositCount, buf = ssz.UnmarshallValue[uint64](buf)
+	tracer.Record(16046195392382727211, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("DepositCount"))), tracer.ToScalar(e.DepositCount))
 
 	// Field (2) 'BlockHash'
 	buf = ssz.UnmarshalFixedBytes(e.BlockHash[:], buf)
+	tracer.Record(16046195392382727211, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("BlockHash"))), tracer.ToBytesValue(e.BlockHash[:]))
 
 	tracer.Record(777, tracer.ToScalar(len(buf)))
@@ -516,6 +623,7 @@ func (e *Eth1Data) fixedSize() int {
 // SizeSSZ returns the ssz encoded size in bytes for the Eth1Data object
 func (e *Eth1Data) SizeSSZ() (size int) {
 	size = e.fixedSize()
+	tracer.Record(9993598622769301344, tracer.ToScalar(size))
 	return
 }
 
@@ -527,6 +635,8 @@ func (e *Eth1Data) HashTreeRoot() ([32]byte, error) {
 // HashTreeRootWith ssz hashes the Eth1Data object with a hasher
 func (e *Eth1Data) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	indx := hh.Index()
+
+	tracer.Record(9124548103629576633, tracer.ToScalar(indx))
 
 	// Field (0) 'DepositRoot'
 	hh.PutBytes(e.DepositRoot[:])
@@ -555,11 +665,17 @@ func (c *Checkpoint) MarshalSSZ() ([]byte, error) {
 func (c *Checkpoint) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 	dst = buf
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (0) 'Epoch'
 	dst = ssz.MarshalValue(dst, c.Epoch)
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (1) 'Root'
 	dst = append(dst, c.Root[:]...)
+
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 
 	return
 }
@@ -572,8 +688,10 @@ func (c *Checkpoint) UnmarshalSSZ(buf []byte) error {
 // UnmarshalSSZTail unmarshals the Checkpoint object and returns the remaining bufferº
 func (c *Checkpoint) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 	size := len(buf)
+	tracer.Record(8402617314992080774, tracer.ToScalar(size))
 	tracer.Record(999, tracer.ToScalar(size)) // Trace 1: Input size
 	fixedSize := c.fixedSize()
+	tracer.Record(194556321646530282, tracer.ToScalar(fixedSize))
 	if size < fixedSize {
 		return nil, ssz.ErrSize
 	}
@@ -581,10 +699,12 @@ func (c *Checkpoint) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 
 	// Field (0) 'Epoch'
 	c.Epoch, buf = ssz.UnmarshallValue[uint64](buf)
+	tracer.Record(16046195392382727211, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("Epoch"))), tracer.ToScalar(c.Epoch))
 
 	// Field (1) 'Root'
 	buf = ssz.UnmarshalFixedBytes(c.Root[:], buf)
+	tracer.Record(16046195392382727211, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("Root"))), tracer.ToBytesValue(c.Root[:]))
 
 	tracer.Record(777, tracer.ToScalar(len(buf)))
@@ -599,6 +719,7 @@ func (c *Checkpoint) fixedSize() int {
 // SizeSSZ returns the ssz encoded size in bytes for the Checkpoint object
 func (c *Checkpoint) SizeSSZ() (size int) {
 	size = c.fixedSize()
+	tracer.Record(9993598622769301344, tracer.ToScalar(size))
 	return
 }
 
@@ -610,6 +731,8 @@ func (c *Checkpoint) HashTreeRoot() ([32]byte, error) {
 // HashTreeRootWith ssz hashes the Checkpoint object with a hasher
 func (c *Checkpoint) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	indx := hh.Index()
+
+	tracer.Record(9124548103629576633, tracer.ToScalar(indx))
 
 	// Field (0) 'Epoch'
 	hh.PutUint64(c.Epoch)
@@ -635,29 +758,47 @@ func (v *Validator) MarshalSSZ() ([]byte, error) {
 func (v *Validator) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 	dst = buf
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (0) 'Pubkey'
 	dst = append(dst, v.Pubkey[:]...)
+
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 
 	// Field (1) 'WithdrawalCredentials'
 	dst = append(dst, v.WithdrawalCredentials[:]...)
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (2) 'EffectiveBalance'
 	dst = ssz.MarshalValue(dst, uint64(v.EffectiveBalance))
+
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 
 	// Field (3) 'Slashed'
 	dst = ssz.MarshalValue(dst, v.Slashed)
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (4) 'ActivationEligibilityEpoch'
 	dst = ssz.MarshalValue(dst, v.ActivationEligibilityEpoch)
+
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 
 	// Field (5) 'ActivationEpoch'
 	dst = ssz.MarshalValue(dst, v.ActivationEpoch)
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (6) 'ExitEpoch'
 	dst = ssz.MarshalValue(dst, v.ExitEpoch)
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (7) 'WithdrawableEpoch'
 	dst = ssz.MarshalValue(dst, v.WithdrawableEpoch)
+
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 
 	return
 }
@@ -670,8 +811,10 @@ func (v *Validator) UnmarshalSSZ(buf []byte) error {
 // UnmarshalSSZTail unmarshals the Validator object and returns the remaining bufferº
 func (v *Validator) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 	size := len(buf)
+	tracer.Record(8402617314992080774, tracer.ToScalar(size))
 	tracer.Record(999, tracer.ToScalar(size)) // Trace 1: Input size
 	fixedSize := v.fixedSize()
+	tracer.Record(194556321646530282, tracer.ToScalar(fixedSize))
 	if size < fixedSize {
 		return nil, ssz.ErrSize
 	}
@@ -679,38 +822,47 @@ func (v *Validator) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 
 	// Field (0) 'Pubkey'
 	buf = ssz.UnmarshalFixedBytes(v.Pubkey[:], buf)
+	tracer.Record(16046195392382727211, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("Pubkey"))), tracer.ToBytesValue(v.Pubkey[:]))
 
 	// Field (1) 'WithdrawalCredentials'
 	buf = ssz.UnmarshalFixedBytes(v.WithdrawalCredentials[:], buf)
+	tracer.Record(16046195392382727211, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("WithdrawalCredentials"))), tracer.ToBytesValue(v.WithdrawalCredentials[:]))
 
 	// Field (2) 'EffectiveBalance'
 	{
 		var val uint64
 		val, buf = ssz.UnmarshallValue[uint64](buf)
+		tracer.Record(2234966005017096466, tracer.ToScalar(buf))
+		tracer.Record(8217666055824790380, tracer.ToScalar(val))
 		v.EffectiveBalance = Gwei(val)
 		tracer.Record(uint64(tracer.Hash([]byte("EffectiveBalance"))), tracer.ToScalar(val))
 	}
 
 	// Field (3) 'Slashed'
 	v.Slashed, buf = ssz.UnmarshallValue[bool](buf)
+	tracer.Record(2234966005017096466, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("Slashed"))), tracer.ToScalar(v.Slashed))
 
 	// Field (4) 'ActivationEligibilityEpoch'
 	v.ActivationEligibilityEpoch, buf = ssz.UnmarshallValue[uint64](buf)
+	tracer.Record(2234966005017096466, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("ActivationEligibilityEpoch"))), tracer.ToScalar(v.ActivationEligibilityEpoch))
 
 	// Field (5) 'ActivationEpoch'
 	v.ActivationEpoch, buf = ssz.UnmarshallValue[uint64](buf)
+	tracer.Record(2234966005017096466, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("ActivationEpoch"))), tracer.ToScalar(v.ActivationEpoch))
 
 	// Field (6) 'ExitEpoch'
 	v.ExitEpoch, buf = ssz.UnmarshallValue[uint64](buf)
+	tracer.Record(2234966005017096466, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("ExitEpoch"))), tracer.ToScalar(v.ExitEpoch))
 
 	// Field (7) 'WithdrawableEpoch'
 	v.WithdrawableEpoch, buf = ssz.UnmarshallValue[uint64](buf)
+	tracer.Record(2234966005017096466, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("WithdrawableEpoch"))), tracer.ToScalar(v.WithdrawableEpoch))
 
 	tracer.Record(777, tracer.ToScalar(len(buf)))
@@ -725,6 +877,7 @@ func (v *Validator) fixedSize() int {
 // SizeSSZ returns the ssz encoded size in bytes for the Validator object
 func (v *Validator) SizeSSZ() (size int) {
 	size = v.fixedSize()
+	tracer.Record(9993598622769301344, tracer.ToScalar(size))
 	return
 }
 
@@ -736,6 +889,8 @@ func (v *Validator) HashTreeRoot() ([32]byte, error) {
 // HashTreeRootWith ssz hashes the Validator object with a hasher
 func (v *Validator) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	indx := hh.Index()
+
+	tracer.Record(9124548103629576633, tracer.ToScalar(indx))
 
 	// Field (0) 'Pubkey'
 	hh.PutBytes(v.Pubkey[:])
@@ -779,14 +934,22 @@ func (a *AttestationData) MarshalSSZ() ([]byte, error) {
 func (a *AttestationData) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 	dst = buf
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (0) 'Slot'
 	dst = ssz.MarshalValue(dst, uint64(a.Slot))
+
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 
 	// Field (1) 'Index'
 	dst = ssz.MarshalValue(dst, a.Index)
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (2) 'BeaconBlockRoot'
 	dst = append(dst, a.BeaconBlockRoot[:]...)
+
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 
 	// Field (3) 'Source'
 	if dst, err = a.Source.MarshalSSZTo(dst); err != nil {
@@ -809,8 +972,10 @@ func (a *AttestationData) UnmarshalSSZ(buf []byte) error {
 // UnmarshalSSZTail unmarshals the AttestationData object and returns the remaining bufferº
 func (a *AttestationData) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 	size := len(buf)
+	tracer.Record(8402617314992080774, tracer.ToScalar(size))
 	tracer.Record(999, tracer.ToScalar(size)) // Trace 1: Input size
 	fixedSize := a.fixedSize()
+	tracer.Record(194556321646530282, tracer.ToScalar(fixedSize))
 	if size < fixedSize {
 		return nil, ssz.ErrSize
 	}
@@ -820,16 +985,20 @@ func (a *AttestationData) UnmarshalSSZTail(buf []byte) (rest []byte, err error) 
 	{
 		var val uint64
 		val, buf = ssz.UnmarshallValue[uint64](buf)
+		tracer.Record(2234966005017096466, tracer.ToScalar(buf))
+		tracer.Record(8217666055824790380, tracer.ToScalar(val))
 		a.Slot = Slot(val)
 		tracer.Record(uint64(tracer.Hash([]byte("Slot"))), tracer.ToScalar(val))
 	}
 
 	// Field (1) 'Index'
 	a.Index, buf = ssz.UnmarshallValue[uint64](buf)
+	tracer.Record(2234966005017096466, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("Index"))), tracer.ToScalar(a.Index))
 
 	// Field (2) 'BeaconBlockRoot'
 	buf = ssz.UnmarshalFixedBytes(a.BeaconBlockRoot[:], buf)
+	tracer.Record(2234966005017096466, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("BeaconBlockRoot"))), tracer.ToBytesValue(a.BeaconBlockRoot[:]))
 
 	// Field (3) 'Source'
@@ -854,6 +1023,7 @@ func (a *AttestationData) fixedSize() int {
 // SizeSSZ returns the ssz encoded size in bytes for the AttestationData object
 func (a *AttestationData) SizeSSZ() (size int) {
 	size = a.fixedSize()
+	tracer.Record(9993598622769301344, tracer.ToScalar(size))
 	return
 }
 
@@ -865,6 +1035,8 @@ func (a *AttestationData) HashTreeRoot() ([32]byte, error) {
 // HashTreeRootWith ssz hashes the AttestationData object with a hasher
 func (a *AttestationData) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	indx := hh.Index()
+
+	tracer.Record(9124548103629576633, tracer.ToScalar(indx))
 
 	// Field (0) 'Slot'
 	hh.PutUint64(uint64(a.Slot))
@@ -902,10 +1074,15 @@ func (p *PendingAttestation) MarshalSSZ() ([]byte, error) {
 // MarshalSSZTo ssz marshals the PendingAttestation object to a target array
 func (p *PendingAttestation) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 	dst = buf
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 	offset := p.fixedSize()
+
+	tracer.Record(17675791446996146504, tracer.ToScalar(offset))
 
 	// Offset (0) 'AggregationBits'
 	dst = ssz.WriteOffset(dst, offset)
+
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 
 	// Field (1) 'Data'
 	if dst, err = p.Data.MarshalSSZTo(dst); err != nil {
@@ -915,15 +1092,22 @@ func (p *PendingAttestation) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 	// Field (2) 'InclusionDelay'
 	dst = ssz.MarshalValue(dst, uint64(p.InclusionDelay))
 
+	tracer.Record(13287582469228152809, tracer.ToScalar(dst))
+
 	// Field (3) 'ProposerIndex'
 	dst = ssz.MarshalValue(dst, uint64(p.ProposerIndex))
+
+	tracer.Record(13287582469228152809, tracer.ToScalar(dst))
 
 	// Field (0) 'AggregationBits'
 	if size := uint64(len(p.AggregationBits)); size > 2048 {
 		err = ssz.ErrBytesLengthFn("PendingAttestation.AggregationBits", size, 2048)
+		tracer.Record(16816149525650905192, tracer.ToScalar(err))
 		return
 	}
 	dst = append(dst, p.AggregationBits...)
+
+	tracer.Record(17343663318883810848, tracer.ToScalar(dst))
 
 	return
 }
@@ -936,16 +1120,21 @@ func (p *PendingAttestation) UnmarshalSSZ(buf []byte) error {
 // UnmarshalSSZTail unmarshals the PendingAttestation object and returns the remaining bufferº
 func (p *PendingAttestation) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 	size := len(buf)
+	tracer.Record(8402617314992080774, tracer.ToScalar(size))
 	tracer.Record(999, tracer.ToScalar(size)) // Trace 1: Input size
 	fixedSize := p.fixedSize()
+	tracer.Record(194556321646530282, tracer.ToScalar(fixedSize))
 	if size < fixedSize {
 		return nil, ssz.ErrSize
 	}
 	tracer.Record(888, tracer.ToScalar(fixedSize)) // Trace 2: Fixed size
 
 	tail := buf
+	tracer.Record(8400561470327127284, tracer.ToScalar(tail))
 	var o0 uint64
 	marker := ssz.NewOffsetMarker(uint64(size), uint64(fixedSize))
+
+	tracer.Record(13759569719659226616, tracer.ToScalar(marker))
 
 	// Offset (0) 'AggregationBits'
 	if o0, buf, err = marker.ReadOffset(buf); err != nil {
@@ -961,6 +1150,8 @@ func (p *PendingAttestation) UnmarshalSSZTail(buf []byte) (rest []byte, err erro
 	{
 		var val uint64
 		val, buf = ssz.UnmarshallValue[uint64](buf)
+		tracer.Record(13654044939386056828, tracer.ToScalar(buf))
+		tracer.Record(7702289543836678098, tracer.ToScalar(val))
 		p.InclusionDelay = Slot(val)
 		tracer.Record(uint64(tracer.Hash([]byte("InclusionDelay"))), tracer.ToScalar(val))
 	}
@@ -969,6 +1160,8 @@ func (p *PendingAttestation) UnmarshalSSZTail(buf []byte) (rest []byte, err erro
 	{
 		var val uint64
 		val, buf = ssz.UnmarshallValue[uint64](buf)
+		tracer.Record(15949763697152337047, tracer.ToScalar(buf))
+		tracer.Record(3424380119547954477, tracer.ToScalar(val))
 		p.ProposerIndex = ValidatorIndex(val)
 		tracer.Record(uint64(tracer.Hash([]byte("ProposerIndex"))), tracer.ToScalar(val))
 	}
@@ -990,8 +1183,12 @@ func (p *PendingAttestation) fixedSize() int {
 func (p *PendingAttestation) SizeSSZ() (size int) {
 	size = p.fixedSize()
 
+	tracer.Record(9993598622769301344, tracer.ToScalar(size))
+
 	// Field (0) 'AggregationBits'
 	size += len(p.AggregationBits)
+
+	tracer.Record(9993598622769301344, tracer.ToScalar(size))
 
 	return
 }
@@ -1005,12 +1202,17 @@ func (p *PendingAttestation) HashTreeRoot() ([32]byte, error) {
 func (p *PendingAttestation) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	indx := hh.Index()
 
+	tracer.Record(9124548103629576633, tracer.ToScalar(indx))
+
 	// Field (0) 'AggregationBits'
 	{
 		elemIndx := hh.Index()
+		tracer.Record(17405718152972083287, tracer.ToScalar(elemIndx))
 		byteLen := uint64(len(p.AggregationBits))
+		tracer.Record(14665136328895629076, tracer.ToScalar(byteLen))
 		if byteLen > 2048 {
 			err = ssz.ErrIncorrectListSize
+			tracer.Record(1756680335971179755, tracer.ToScalar(err))
 			return
 		}
 		hh.Append(p.AggregationBits)
@@ -1045,16 +1247,25 @@ func (b *BeaconState) MarshalSSZ() ([]byte, error) {
 // MarshalSSZTo ssz marshals the BeaconState object to a target array
 func (b *BeaconState) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 	dst = buf
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 	offset := b.fixedSize()
+
+	tracer.Record(17675791446996146504, tracer.ToScalar(offset))
 
 	// Field (0) 'GenesisTime'
 	dst = ssz.MarshalValue(dst, b.GenesisTime)
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (1) 'GenesisValidatorsRoot'
 	dst = append(dst, b.GenesisValidatorsRoot[:]...)
 
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
+
 	// Field (2) 'Slot'
 	dst = ssz.MarshalValue(dst, uint64(b.Slot))
+
+	tracer.Record(9716298303570142010, tracer.ToScalar(dst))
 
 	// Field (3) 'Fork'
 	if dst, err = b.Fork.MarshalSSZTo(dst); err != nil {
@@ -1069,24 +1280,31 @@ func (b *BeaconState) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 	// Field (5) 'BlockRoots'
 	if size := uint64(len(b.BlockRoots)); size != 4 {
 		err = ssz.ErrVectorLengthFn("BeaconState.BlockRoots", size, 4)
+		tracer.Record(41879210796514867, tracer.ToScalar(err))
 		return
 	}
 	for ii := uint64(0); ii < 4; ii++ {
 		dst = append(dst, b.BlockRoots[ii][:]...)
+		tracer.Record(1569163585450492654, tracer.ToScalar(dst))
 	}
 
 	// Field (6) 'StateRoots'
 	if size := uint64(len(b.StateRoots)); size != 4 {
 		err = ssz.ErrVectorLengthFn("BeaconState.StateRoots", size, 4)
+		tracer.Record(12639656908869750109, tracer.ToScalar(err))
 		return
 	}
 	for ii := uint64(0); ii < 4; ii++ {
 		dst = append(dst, b.StateRoots[ii][:]...)
+		tracer.Record(15430935431042436612, tracer.ToScalar(dst))
 	}
 
 	// Offset (7) 'HistoricalRoots'
 	dst = ssz.WriteOffset(dst, offset)
+	tracer.Record(15430935431042436612, tracer.ToScalar(dst))
 	offset += len(b.HistoricalRoots) * 32
+
+	tracer.Record(18322286657740013010, tracer.ToScalar(offset))
 
 	// Field (8) 'Eth1Data'
 	if dst, err = b.Eth1Data.MarshalSSZTo(dst); err != nil {
@@ -1095,51 +1313,74 @@ func (b *BeaconState) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 
 	// Offset (9) 'Eth1DataVotes'
 	dst = ssz.WriteOffset(dst, offset)
+	tracer.Record(4278051908214352699, tracer.ToScalar(dst))
 	offset += len(b.Eth1DataVotes) * 72
+
+	tracer.Record(16023200265118496771, tracer.ToScalar(offset))
 
 	// Field (10) 'Eth1DepositIndex'
 	dst = ssz.MarshalValue(dst, b.Eth1DepositIndex)
 
+	tracer.Record(4278051908214352699, tracer.ToScalar(dst))
+
 	// Offset (11) 'Validators'
 	dst = ssz.WriteOffset(dst, offset)
+	tracer.Record(4278051908214352699, tracer.ToScalar(dst))
 	offset += len(b.Validators) * 121
+
+	tracer.Record(16023200265118496771, tracer.ToScalar(offset))
 
 	// Offset (12) 'Balances'
 	dst = ssz.WriteOffset(dst, offset)
+	tracer.Record(4278051908214352699, tracer.ToScalar(dst))
 	offset += len(b.Balances) * 8
+
+	tracer.Record(16023200265118496771, tracer.ToScalar(offset))
 
 	// Field (13) 'RandaoMixes'
 	if size := uint64(len(b.RandaoMixes)); size != 4 {
 		err = ssz.ErrVectorLengthFn("BeaconState.RandaoMixes", size, 4)
+		tracer.Record(12246002698465090918, tracer.ToScalar(err))
 		return
 	}
 	for ii := uint64(0); ii < 4; ii++ {
 		dst = append(dst, b.RandaoMixes[ii][:]...)
+		tracer.Record(11469703584380205392, tracer.ToScalar(dst))
 	}
 
 	// Field (14) 'Slashings'
 	if size := uint64(len(b.Slashings)); size != 4 {
 		err = ssz.ErrVectorLengthFn("BeaconState.Slashings", size, 4)
+		tracer.Record(7918081968141666161, tracer.ToScalar(err))
 		return
 	}
 	for ii := uint64(0); ii < 4; ii++ {
 		dst = ssz.MarshalValue(dst, uint64(b.Slashings[ii]))
+		tracer.Record(6772844925589101354, tracer.ToScalar(dst))
 	}
 
 	// Offset (15) 'PreviousEpochAttestations'
 	dst = ssz.WriteOffset(dst, offset)
+	tracer.Record(6772844925589101354, tracer.ToScalar(dst))
 	for ii := 0; ii < len(b.PreviousEpochAttestations); ii++ {
 		offset += 4
+		tracer.Record(1948098051230521115, tracer.ToScalar(offset))
 		offset += b.PreviousEpochAttestations[ii].SizeSSZ()
+		tracer.Record(1948098051230521115, tracer.ToScalar(offset))
 	}
 
 	// Offset (16) 'CurrentEpochAttestations'
 	dst = ssz.WriteOffset(dst, offset)
 
+	tracer.Record(4473431808752789075, tracer.ToScalar(dst))
+
 	// Field (17) 'JustificationBits'
 	// Clean padding bits to produce canonical output
 	cleaned := b.JustificationBits[0] & 0x0F
+	tracer.Record(7539988572647470376, tracer.ToScalar(cleaned))
 	dst = append(dst, cleaned)
+
+	tracer.Record(4473431808752789075, tracer.ToScalar(dst))
 
 	// Field (18) 'PreviousJustifiedCheckpoint'
 	if dst, err = b.PreviousJustifiedCheckpoint.MarshalSSZTo(dst); err != nil {
@@ -1159,15 +1400,18 @@ func (b *BeaconState) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 	// Field (7) 'HistoricalRoots'
 	if size := uint64(len(b.HistoricalRoots)); size > 4 {
 		err = ssz.ErrListTooBigFn("BeaconState.HistoricalRoots", size, 4)
+		tracer.Record(15545451381501847843, tracer.ToScalar(err))
 		return
 	}
 	for ii := 0; ii < len(b.HistoricalRoots); ii++ {
 		dst = append(dst, b.HistoricalRoots[ii][:]...)
+		tracer.Record(2322223935868079688, tracer.ToScalar(dst))
 	}
 
 	// Field (9) 'Eth1DataVotes'
 	if size := uint64(len(b.Eth1DataVotes)); size > 4 {
 		err = ssz.ErrListTooBigFn("BeaconState.Eth1DataVotes", size, 4)
+		tracer.Record(11013884218319132137, tracer.ToScalar(err))
 		return
 	}
 	for ii := 0; ii < len(b.Eth1DataVotes); ii++ {
@@ -1179,6 +1423,7 @@ func (b *BeaconState) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 	// Field (11) 'Validators'
 	if size := uint64(len(b.Validators)); size > 4 {
 		err = ssz.ErrListTooBigFn("BeaconState.Validators", size, 4)
+		tracer.Record(313850767414867827, tracer.ToScalar(err))
 		return
 	}
 	for ii := 0; ii < len(b.Validators); ii++ {
@@ -1190,22 +1435,28 @@ func (b *BeaconState) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 	// Field (12) 'Balances'
 	if size := uint64(len(b.Balances)); size > 4 {
 		err = ssz.ErrListTooBigFn("BeaconState.Balances", size, 4)
+		tracer.Record(4875484771675108264, tracer.ToScalar(err))
 		return
 	}
 	for ii := 0; ii < len(b.Balances); ii++ {
 		dst = ssz.MarshalValue(dst, uint64(b.Balances[ii]))
+		tracer.Record(10863964854684637795, tracer.ToScalar(dst))
 	}
 
 	// Field (15) 'PreviousEpochAttestations'
 	if size := uint64(len(b.PreviousEpochAttestations)); size > 4 {
 		err = ssz.ErrListTooBigFn("BeaconState.PreviousEpochAttestations", size, 4)
+		tracer.Record(9452852777373522446, tracer.ToScalar(err))
 		return
 	}
 	{
 		offset = 4 * len(b.PreviousEpochAttestations)
+		tracer.Record(935902687055126933, tracer.ToScalar(offset))
 		for ii := 0; ii < len(b.PreviousEpochAttestations); ii++ {
 			dst = ssz.WriteOffset(dst, offset)
+			tracer.Record(15837240633871324188, tracer.ToScalar(dst))
 			offset += b.PreviousEpochAttestations[ii].SizeSSZ()
+			tracer.Record(9558660515213895114, tracer.ToScalar(offset))
 		}
 	}
 	for ii := 0; ii < len(b.PreviousEpochAttestations); ii++ {
@@ -1217,13 +1468,17 @@ func (b *BeaconState) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 	// Field (16) 'CurrentEpochAttestations'
 	if size := uint64(len(b.CurrentEpochAttestations)); size > 4 {
 		err = ssz.ErrListTooBigFn("BeaconState.CurrentEpochAttestations", size, 4)
+		tracer.Record(17369349025141194368, tracer.ToScalar(err))
 		return
 	}
 	{
 		offset = 4 * len(b.CurrentEpochAttestations)
+		tracer.Record(8663543214057036513, tracer.ToScalar(offset))
 		for ii := 0; ii < len(b.CurrentEpochAttestations); ii++ {
 			dst = ssz.WriteOffset(dst, offset)
+			tracer.Record(8357033798009827590, tracer.ToScalar(dst))
 			offset += b.CurrentEpochAttestations[ii].SizeSSZ()
+			tracer.Record(6005769369581697124, tracer.ToScalar(offset))
 		}
 	}
 	for ii := 0; ii < len(b.CurrentEpochAttestations); ii++ {
@@ -1243,29 +1498,38 @@ func (b *BeaconState) UnmarshalSSZ(buf []byte) error {
 // UnmarshalSSZTail unmarshals the BeaconState object and returns the remaining bufferº
 func (b *BeaconState) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 	size := len(buf)
+	tracer.Record(8402617314992080774, tracer.ToScalar(size))
 	tracer.Record(999, tracer.ToScalar(size)) // Trace 1: Input size
 	fixedSize := b.fixedSize()
+	tracer.Record(194556321646530282, tracer.ToScalar(fixedSize))
 	if size < fixedSize {
 		return nil, ssz.ErrSize
 	}
 	tracer.Record(888, tracer.ToScalar(fixedSize)) // Trace 2: Fixed size
 
 	tail := buf
+	tracer.Record(8400561470327127284, tracer.ToScalar(tail))
 	var o7, o9, o11, o12, o15, o16 uint64
 	marker := ssz.NewOffsetMarker(uint64(size), uint64(fixedSize))
 
+	tracer.Record(13759569719659226616, tracer.ToScalar(marker))
+
 	// Field (0) 'GenesisTime'
 	b.GenesisTime, buf = ssz.UnmarshallValue[uint64](buf)
+	tracer.Record(16046195392382727211, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("GenesisTime"))), tracer.ToScalar(b.GenesisTime))
 
 	// Field (1) 'GenesisValidatorsRoot'
 	buf = ssz.UnmarshalFixedBytes(b.GenesisValidatorsRoot[:], buf)
+	tracer.Record(16046195392382727211, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("GenesisValidatorsRoot"))), tracer.ToBytesValue(b.GenesisValidatorsRoot[:]))
 
 	// Field (2) 'Slot'
 	{
 		var val uint64
 		val, buf = ssz.UnmarshallValue[uint64](buf)
+		tracer.Record(2234966005017096466, tracer.ToScalar(buf))
+		tracer.Record(8217666055824790380, tracer.ToScalar(val))
 		b.Slot = Slot(val)
 		tracer.Record(uint64(tracer.Hash([]byte("Slot"))), tracer.ToScalar(val))
 	}
@@ -1284,6 +1548,7 @@ func (b *BeaconState) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 	b.BlockRoots = make([][32]byte, 4)
 	for ii := uint64(0); ii < 4; ii++ {
 		buf = ssz.UnmarshalFixedBytes(b.BlockRoots[ii][:], buf)
+		tracer.Record(15949763697152337047, tracer.ToScalar(buf))
 		tracer.Record(uint64(tracer.Hash([]byte("BlockRoots[ii]"))), tracer.ToBytesValue(b.BlockRoots[ii][:]))
 	}
 
@@ -1291,6 +1556,7 @@ func (b *BeaconState) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 	b.StateRoots = make([][32]byte, 4)
 	for ii := uint64(0); ii < 4; ii++ {
 		buf = ssz.UnmarshalFixedBytes(b.StateRoots[ii][:], buf)
+		tracer.Record(5426953659820233342, tracer.ToScalar(buf))
 		tracer.Record(uint64(tracer.Hash([]byte("StateRoots[ii]"))), tracer.ToBytesValue(b.StateRoots[ii][:]))
 	}
 
@@ -1311,6 +1577,7 @@ func (b *BeaconState) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 
 	// Field (10) 'Eth1DepositIndex'
 	b.Eth1DepositIndex, buf = ssz.UnmarshallValue[uint64](buf)
+	tracer.Record(4830926379463941722, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("Eth1DepositIndex"))), tracer.ToScalar(b.Eth1DepositIndex))
 
 	// Offset (11) 'Validators'
@@ -1327,6 +1594,7 @@ func (b *BeaconState) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 	b.RandaoMixes = make([][32]byte, 4)
 	for ii := uint64(0); ii < 4; ii++ {
 		buf = ssz.UnmarshalFixedBytes(b.RandaoMixes[ii][:], buf)
+		tracer.Record(10295815726729265545, tracer.ToScalar(buf))
 		tracer.Record(uint64(tracer.Hash([]byte("RandaoMixes[ii]"))), tracer.ToBytesValue(b.RandaoMixes[ii][:]))
 	}
 
@@ -1336,6 +1604,8 @@ func (b *BeaconState) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 		{
 			var val uint64
 			val, buf = ssz.UnmarshallValue[uint64](buf)
+			tracer.Record(68510331654702655, tracer.ToScalar(buf))
+			tracer.Record(7608088063707592421, tracer.ToScalar(val))
 			b.Slashings[ii] = Gwei(val)
 			tracer.Record(uint64(tracer.Hash([]byte("Slashings[ii]"))), tracer.ToScalar(val))
 		}
@@ -1353,6 +1623,7 @@ func (b *BeaconState) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 
 	// Field (17) 'JustificationBits'
 	buf = ssz.UnmarshalFixedBytes(b.JustificationBits[:], buf)
+	tracer.Record(13258383683281822005, tracer.ToScalar(buf))
 	tracer.Record(uint64(tracer.Hash([]byte("JustificationBits"))), tracer.ToBytesValue(b.JustificationBits[:]))
 
 	// Field (18) 'PreviousJustifiedCheckpoint'
@@ -1373,6 +1644,7 @@ func (b *BeaconState) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 	// Field (7) 'HistoricalRoots'
 	if err = ssz.UnmarshalSliceWithIndexCallback(&b.HistoricalRoots, tail[o7:o9], 32, 4, func(ii uint64, buf []byte) (err error) {
 		buf = ssz.UnmarshalFixedBytes(b.HistoricalRoots[ii][:], buf)
+		tracer.Record(1825397274841620030, tracer.ToScalar(buf))
 		tracer.Record(uint64(tracer.Hash([]byte("HistoricalRoots[ii]"))), tracer.ToBytesValue(b.HistoricalRoots[ii][:]))
 		return nil
 	}); err != nil {
@@ -1404,6 +1676,8 @@ func (b *BeaconState) UnmarshalSSZTail(buf []byte) (rest []byte, err error) {
 		{
 			var val uint64
 			val, buf = ssz.UnmarshallValue[uint64](buf)
+			tracer.Record(1091618580955803792, tracer.ToScalar(buf))
+			tracer.Record(7043642257342466006, tracer.ToScalar(val))
 			b.Balances[ii] = Gwei(val)
 			tracer.Record(uint64(tracer.Hash([]byte("Balances[ii]"))), tracer.ToScalar(val))
 		}
@@ -1444,28 +1718,42 @@ func (b *BeaconState) fixedSize() int {
 func (b *BeaconState) SizeSSZ() (size int) {
 	size = b.fixedSize()
 
+	tracer.Record(9993598622769301344, tracer.ToScalar(size))
+
 	// Field (7) 'HistoricalRoots'
 	size += len(b.HistoricalRoots) * 32
+
+	tracer.Record(9993598622769301344, tracer.ToScalar(size))
 
 	// Field (9) 'Eth1DataVotes'
 	size += len(b.Eth1DataVotes) * 72
 
+	tracer.Record(9993598622769301344, tracer.ToScalar(size))
+
 	// Field (11) 'Validators'
 	size += len(b.Validators) * 121
+
+	tracer.Record(9993598622769301344, tracer.ToScalar(size))
 
 	// Field (12) 'Balances'
 	size += len(b.Balances) * 8
 
+	tracer.Record(9993598622769301344, tracer.ToScalar(size))
+
 	// Field (15) 'PreviousEpochAttestations'
 	for ii := 0; ii < len(b.PreviousEpochAttestations); ii++ {
 		size += 4
+		tracer.Record(7493674929858541897, tracer.ToScalar(size))
 		size += b.PreviousEpochAttestations[ii].SizeSSZ()
+		tracer.Record(7493674929858541897, tracer.ToScalar(size))
 	}
 
 	// Field (16) 'CurrentEpochAttestations'
 	for ii := 0; ii < len(b.CurrentEpochAttestations); ii++ {
 		size += 4
+		tracer.Record(7590339427065781962, tracer.ToScalar(size))
 		size += b.CurrentEpochAttestations[ii].SizeSSZ()
+		tracer.Record(7590339427065781962, tracer.ToScalar(size))
 	}
 
 	return
@@ -1479,6 +1767,8 @@ func (b *BeaconState) HashTreeRoot() ([32]byte, error) {
 // HashTreeRootWith ssz hashes the BeaconState object with a hasher
 func (b *BeaconState) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	indx := hh.Index()
+
+	tracer.Record(9124548103629576633, tracer.ToScalar(indx))
 
 	// Field (0) 'GenesisTime'
 	hh.PutUint64(b.GenesisTime)
@@ -1503,9 +1793,11 @@ func (b *BeaconState) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	{
 		if size := uint64(len(b.BlockRoots)); size != 4 {
 			err = ssz.ErrVectorLengthFn("BeaconState.BlockRoots", size, 4)
+			tracer.Record(12331136582161734617, tracer.ToScalar(err))
 			return
 		}
 		subIndx := hh.Index()
+		tracer.Record(13639080197730594063, tracer.ToScalar(subIndx))
 		for _, i := range b.BlockRoots {
 			hh.Append(i[:])
 		}
@@ -1516,9 +1808,11 @@ func (b *BeaconState) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	{
 		if size := uint64(len(b.StateRoots)); size != 4 {
 			err = ssz.ErrVectorLengthFn("BeaconState.StateRoots", size, 4)
+			tracer.Record(13522095057364779412, tracer.ToScalar(err))
 			return
 		}
 		subIndx := hh.Index()
+		tracer.Record(12730659239779629674, tracer.ToScalar(subIndx))
 		for _, i := range b.StateRoots {
 			hh.Append(i[:])
 		}
@@ -1529,13 +1823,16 @@ func (b *BeaconState) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	{
 		if size := uint64(len(b.HistoricalRoots)); size > 4 {
 			err = ssz.ErrListTooBigFn("BeaconState.HistoricalRoots", size, 4)
+			tracer.Record(11668481690631710560, tracer.ToScalar(err))
 			return
 		}
 		subIndx := hh.Index()
+		tracer.Record(10402039784459081270, tracer.ToScalar(subIndx))
 		for _, i := range b.HistoricalRoots {
 			hh.Append(i[:])
 		}
 		numItems := uint64(len(b.HistoricalRoots))
+		tracer.Record(17702486973858646836, tracer.ToScalar(numItems))
 		hh.MerkleizeWithMixin(subIndx, numItems, 4)
 	}
 
@@ -1547,9 +1844,12 @@ func (b *BeaconState) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	// Field (9) 'Eth1DataVotes'
 	{
 		subIndx := hh.Index()
+		tracer.Record(1527241588078052555, tracer.ToScalar(subIndx))
 		num := uint64(len(b.Eth1DataVotes))
+		tracer.Record(4373776317983841914, tracer.ToScalar(num))
 		if num > 4 {
 			err = ssz.ErrIncorrectListSize
+			tracer.Record(345966182295809772, tracer.ToScalar(err))
 			return
 		}
 		for _, elem := range b.Eth1DataVotes {
@@ -1566,9 +1866,12 @@ func (b *BeaconState) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	// Field (11) 'Validators'
 	{
 		subIndx := hh.Index()
+		tracer.Record(1430555229096948295, tracer.ToScalar(subIndx))
 		num := uint64(len(b.Validators))
+		tracer.Record(11020808023732526134, tracer.ToScalar(num))
 		if num > 4 {
 			err = ssz.ErrIncorrectListSize
+			tracer.Record(2368970974829565384, tracer.ToScalar(err))
 			return
 		}
 		for _, elem := range b.Validators {
@@ -1583,14 +1886,17 @@ func (b *BeaconState) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	{
 		if size := uint64(len(b.Balances)); size > 4 {
 			err = ssz.ErrListTooBigFn("BeaconState.Balances", size, 4)
+			tracer.Record(6825338268522711891, tracer.ToScalar(err))
 			return
 		}
 		subIndx := hh.Index()
+		tracer.Record(7012414166135101309, tracer.ToScalar(subIndx))
 		for _, i := range b.Balances {
 			hh.AppendUint64(i)
 		}
 		hh.FillUpTo32()
 		numItems := uint64(len(b.Balances))
+		tracer.Record(9601276408385268145, tracer.ToScalar(numItems))
 		hh.MerkleizeWithMixin(subIndx, numItems, ssz.CalculateLimit(4, numItems, 8))
 	}
 
@@ -1598,9 +1904,11 @@ func (b *BeaconState) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	{
 		if size := uint64(len(b.RandaoMixes)); size != 4 {
 			err = ssz.ErrVectorLengthFn("BeaconState.RandaoMixes", size, 4)
+			tracer.Record(3751985442864038638, tracer.ToScalar(err))
 			return
 		}
 		subIndx := hh.Index()
+		tracer.Record(6218926412614254856, tracer.ToScalar(subIndx))
 		for _, i := range b.RandaoMixes {
 			hh.Append(i[:])
 		}
@@ -1611,9 +1919,11 @@ func (b *BeaconState) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	{
 		if size := uint64(len(b.Slashings)); size != 4 {
 			err = ssz.ErrVectorLengthFn("BeaconState.Slashings", size, 4)
+			tracer.Record(10275601133711718677, tracer.ToScalar(err))
 			return
 		}
 		subIndx := hh.Index()
+		tracer.Record(9939211881523194763, tracer.ToScalar(subIndx))
 		for _, i := range b.Slashings {
 			hh.AppendUint64(i)
 		}
@@ -1623,9 +1933,12 @@ func (b *BeaconState) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	// Field (15) 'PreviousEpochAttestations'
 	{
 		subIndx := hh.Index()
+		tracer.Record(2901019638693634148, tracer.ToScalar(subIndx))
 		num := uint64(len(b.PreviousEpochAttestations))
+		tracer.Record(12287993414635024597, tracer.ToScalar(num))
 		if num > 4 {
 			err = ssz.ErrIncorrectListSize
+			tracer.Record(4187297547315013037, tracer.ToScalar(err))
 			return
 		}
 		for _, elem := range b.PreviousEpochAttestations {
@@ -1639,9 +1952,12 @@ func (b *BeaconState) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	// Field (16) 'CurrentEpochAttestations'
 	{
 		subIndx := hh.Index()
+		tracer.Record(5791959934464441496, tracer.ToScalar(subIndx))
 		num := uint64(len(b.CurrentEpochAttestations))
+		tracer.Record(13463151293249510937, tracer.ToScalar(num))
 		if num > 4 {
 			err = ssz.ErrIncorrectListSize
+			tracer.Record(14376647590398585297, tracer.ToScalar(err))
 			return
 		}
 		for _, elem := range b.CurrentEpochAttestations {

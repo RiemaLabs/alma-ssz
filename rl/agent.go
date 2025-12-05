@@ -3,8 +3,6 @@ package rl
 import (
 	"math"
 	"math/rand"
-
-	"alma.local/ssz/concretizer"
 )
 
 // PolicyAgent represents an RL agent that learns a policy.
@@ -35,8 +33,9 @@ func NewPolicyAgent(actionSize int) *PolicyAgent {
 		policyNet:  policyNet,
 		optimizer:  optimizer,
 		memory:     make([]*Experience, 0),
-		gamma:      0.99,
-		epsilon:    0.1, // Start with some exploration
+		gamma:      0.5,  // Discount factor
+		epsilon:    0.9,  // Exploration rate for RL learning
+
 	}
 }
 
@@ -44,17 +43,15 @@ func NewPolicyAgent(actionSize int) *PolicyAgent {
 func (agent *PolicyAgent) Act(obs Observation) Action {
 	// Epsilon-greedy exploration
 	if rand.Float64() < agent.epsilon {
-		// Explore: pick a random action
-		return Action{MutationType: concretizer.MutationType(rand.Intn(agent.actionSize))}
+		// Explore: pick a random action ID
+		return Action{ID: rand.Intn(agent.actionSize)}
 	}
 
 	// Exploit: use the policy network
 	probs := agent.policyNet.Forward(obs.Vector)
-	actionIdx := Softmax(probs) // Softmax sampling
+	actionID := Softmax(probs) // Softmax sampling gives action ID
 
-	// Convert action index back to structured action (this is simplified for now)
-	// In a real scenario, the ActionSpace would help map index to Action parameters
-	return Action{MutationType: concretizer.MutationType(actionIdx)}
+	return Action{ID: actionID}
 }
 
 // Softmax applies the softmax function to a slice of floats and samples an index.
@@ -133,7 +130,7 @@ func (agent *PolicyAgent) Learn() {
 		advantage := (returns[i] - mean) / std
 
 		// Update policy network
-	agent.optimizer.Train(exp.Observation.Vector, int(exp.Action.MutationType), advantage)
+		agent.optimizer.Train(exp.Observation.Vector, exp.Action.ID, advantage)
 	}
 
 	// Decrease epsilon over time for less exploration

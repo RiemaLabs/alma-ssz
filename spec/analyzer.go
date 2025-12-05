@@ -82,16 +82,13 @@ func (a *GenericAnalyzer) GetDomains(instance interface{}) ([]domains.Domain, er
 							},
 						},
 					})
-					// For [1]byte bitvectors, the "Padding" aspect sufficiently covers the "value".
-					// Do not add a separate "ElementValue" aspect to avoid conflicts.
-				} else {
-					// Content aspect for other byte arrays
-					domain.Aspects = append(domain.Aspects, domains.FieldAspect{
-						ID:          "ElementValue",
-						Description: fmt.Sprintf("Value of each element in %s", fieldName),
-						Buckets:     ByteContentBuckets,
-					})
 				}
+				// Content aspect for byte arrays
+				domain.Aspects = append(domain.Aspects, domains.FieldAspect{
+					ID:          "ElementValue",
+					Description: fmt.Sprintf("Value of each element in %s", fieldName),
+					Buckets:     ByteContentBuckets,
+				})
 			} else {
 				// Array of other things (e.g., [4]Checkpoint) - recursion handled by Concretizer
 				domain.Aspects = append(domain.Aspects, domains.FieldAspect{

@@ -9,10 +9,8 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
@@ -39,33 +37,15 @@ type Metadata struct {
 }
 
 func main() {
-	flag.StringVar(&targetDir, "dir", "./workspace/fastssz", "Directory to instrument")
+	// flag.StringVar(&targetDir, "dir", "./workspace/fastssz", "Directory to instrument")
 	flag.Parse()
 
-	log.Printf("Instrumenting directory: %s", targetDir)
+	targetFile := "./schemas/schemas_encoding.go"
+	log.Printf("Instrumenting file: %s", targetFile)
 
-	err := filepath.Walk(targetDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			if info.Name() == ".git" || info.Name() == "vendor" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if filepath.Ext(path) != ".go" {
-			return nil
-		}
-		if strings.HasSuffix(path, "_test.go") {
-			return nil
-		}
-
-		return instrumentFile(path)
-	})
-
+	err := instrumentFile(targetFile) // Directly call instrumentFile
 	if err != nil {
-		log.Fatalf("Error walking path: %v", err)
+		log.Fatalf("Error instrumenting file %s: %v", targetFile, err)
 	}
 
 	saveMetadata()

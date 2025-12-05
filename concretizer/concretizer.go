@@ -203,12 +203,15 @@ func (c *Concretizer) applyAspect(val reflect.Value, aspectID domains.AspectID, 
 			// The original value has already been set by Concretizer.
 			// Here we just ensure padding bits are zero.
 			if val.CanSet() && val.Kind() == reflect.Uint8 {
-				val.SetUint(val.Uint() & 0x0F) // Assuming Bitvector[4], clear upper 4 bits
+				originalVal := val.Uint()
+				val.SetUint(originalVal & 0x0F) // Assuming Bitvector[4], clear upper 4 bits
+				fmt.Printf("DEBUG: applyAspect: CanonicalPadding on %s, original: 0x%x, after mask: 0x%x\n", fieldStruct.Name, originalVal, val.Uint())
 			}
 		case "DirtyPadding":
 			// Set the byte value such that high-order bits are non-zero (0x1F as per paper).
 			if val.CanSet() && val.Kind() == reflect.Uint8 {
 				val.SetUint(0x1F) // Set to 0x1F to introduce dirty padding as in the paper
+				fmt.Printf("DEBUG: applyAspect: DirtyPadding on %s, set to 0x%x\n", fieldStruct.Name, val.Uint())
 			}
 		}
 	case "Default": // For structs/arrays of structs, default means recurse
@@ -242,6 +245,7 @@ func (c *Concretizer) concretizeStructRecursive(val reflect.Value) error {
 			case reflect.Array:
 				if f.Type().Elem().Kind() == reflect.Uint8 && f.Len() == 1 { // For [1]byte (bitvector)
 					f.Index(0).SetUint(0x00) // Default to canonical (zero padding)
+					fmt.Printf("DEBUG: concretizeStructRecursive: Set %s (Bitvector4) to 0x%x\n", f.Type().Name(), f.Index(0).Uint())
 				} else if f.Type().Elem().Kind() == reflect.Uint8 {
 					c.setElementValue(f, domains.Range{Min: 0, Max: 255}) // Random bytes for other byte arrays
 				}
@@ -275,7 +279,7 @@ func (c *Concretizer) setUint(val reflect.Value, r domains.Range) {
 			sample = rand.Uint64()
 		} else {
 			diff := r.Max - r.Min
-			if diff == math.MaxUint64 { // diff + 1 would overflow if diff is MaxUint64
+			if diff == math.MaxInt64 { // diff + 1 would overflow if diff is MaxUint64
 				sample = r.Min + rand.Uint64() // Directly add a random 64-bit number
 			} else {
 				// Use rand.Int63n for smaller ranges, adjust for positive range.
@@ -377,10 +381,17 @@ func (c *Concretizer) setLength(val reflect.Value, r domains.Range, fieldStruct 
 				sampleLen = rand.Uint64()
 			} else {
 				diff := r.Max - r.Min
-				if diff == math.MaxUint64 {
-					sampleLen = r.Min + rand.Uint64()
+				if diff == math.MaxInt64 { // diff + 1 would overflow if diff is MaxUint64
+					sampleLen = r.Min + rand.Uint64() // Directly add a random 64-bit number
 				} else {
-					sampleLen = r.Min + uint64(rand.Int63n(int64(diff+1)))
+					// Use rand.Int63n for smaller ranges, adjust for positive range.
+					// If diff+1 exceeds MaxInt64, Int63n cannot be used.
+					if diff < math.MaxInt64 { 
+						sampleLen = r.Min + uint64(rand.Int63n(int64(diff+1)))
+					} else { 
+						// For ranges between MaxInt64 and MaxUint64, use modulo from rand.Uint64()
+						sampleLen = r.Min + (rand.Uint64() % (diff + 1))
+					}
 				}
 			}
 		}

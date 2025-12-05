@@ -25,6 +25,10 @@ func main() {
 		targetSchema = &schemas.AttestationData{}
 	case "BeaconState":
 		targetSchema = &schemas.BeaconState{}
+	case "PendingAttestation":
+		targetSchema = &schemas.PendingAttestation{}
+	case "BitvectorStruct":
+		targetSchema = &schemas.BitvectorStruct{}
 	// Add other schemas here as needed
 	default:
 		fmt.Printf("Unknown schema: %s\n", opts.SchemaName)
