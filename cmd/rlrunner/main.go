@@ -17,6 +17,8 @@ func main() {
 	flag.StringVar(&opts.AgentType, "agent", "policy", "Agent type (e.g., 'random', 'policy')")
 	flag.StringVar(&opts.SchemaName, "schema", "AttestationData", "Name of the schema to fuzz (e.g., 'AttestationData', 'BeaconState')")
 	flag.IntVar(&opts.BatchSize, "batch-size", 5, "Number of inputs per step")
+	flag.BoolVar(&opts.IsBaseline, "baseline", false, "Run in baseline mode (no RL agent learning)")
+	flag.IntVar(&opts.D_ctx, "d-ctx", 7, "Dimensionality of the observation context for the RL agent") // New flag
 	flag.Parse()
 
 	var targetSchema ssz.Unmarshaler

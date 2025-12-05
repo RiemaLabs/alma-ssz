@@ -14,6 +14,8 @@ type RLOpts struct {
 	AgentType  string // e.g., "random", "policy" (for our new agent)
 	SchemaName string // Name of the schema to fuzz, e.g., "BeaconState"
 	BatchSize  int    // Number of inputs per step
+	IsBaseline bool   // New: Flag to indicate baseline mode
+	D_ctx      int    // New: Dimensionality of the observation context for the RL agent
 }
 
 // RLAgent defines the interface for an agent that interacts with the fuzzing environment.
@@ -27,7 +29,7 @@ type RLAgent interface {
 // RunRLProcess sets up and runs the RL-based fuzzer.
 func RunRLProcess(targetSchema ssz.Unmarshaler, opts RLOpts) {
 	// 1. Setup Environment
-	env, err := NewFuzzingEnv(targetSchema, opts.MaxSteps, opts.BatchSize)
+	env, err := NewFuzzingEnv(targetSchema, opts.MaxSteps, opts.BatchSize, opts.D_ctx)
 	if err != nil {
 		fmt.Printf("Error creating fuzzing environment: %v\n", err)
 		return
@@ -41,7 +43,7 @@ func RunRLProcess(targetSchema ssz.Unmarshaler, opts RLOpts) {
 		// For now, let's just use PolicyAgent as default.
 		fallthrough
 	case "policy": // Use our new PolicyAgent
-		agent = NewPolicyAgent(env.EncodingCtx.ActionCount()) // PolicyAgent needs action size
+		agent = NewPolicyAgent(env.EncodingCtx.ActionCount(), opts.IsBaseline) // Pass opts.IsBaseline
 	default:
 		fmt.Printf("Unknown agent type: %s\n", opts.AgentType)
 		return
@@ -74,6 +76,11 @@ func (rlo *RLOrchestrator) Train() {
 	fmt.Printf("\nTarget Schema: %s, Max Steps per Episode: %d, Batch Size: %d\n", 
 		reflect.TypeOf(rlo.Env.TargetSchema).Elem().Name(), rlo.Env.MaxSteps, rlo.Env.BatchSize)
 
+	var (
+		baselineBugTriggerTime = math.MaxInt // Stores the step count when the first bug is found in baseline mode
+		rlBugTriggerTime       = math.MaxInt // Stores the step count when the first bug is found in RL mode
+	)
+
 	for i := 1; i <= rlo.Opts.Episodes; i++ {
 		// Pass an initial empty history summary for the first state
 		oldState := rlo.Env.Reset(make([]float64, d_ctx)) // Reset environment for a new episode
@@ -91,12 +98,25 @@ func (rlo *RLOrchestrator) Train() {
 			}
 			
 			// 2. Environment executes the batch of actions
-			newState, reward, done, err := rlo.Env.Step(batchActions) // Pass the batch of actions
+			newState, reward, done, bugTriggerStep, err := rlo.Env.Step(batchActions) // Capture bugTriggerStep
 			if err != nil {
 				fmt.Printf("Error during environment step: %v\n", err)
 				break
 			}
 			
+			// Check and record bug trigger time
+			if bugTriggerStep > 0 {
+				if rlo.Opts.IsBaseline {
+					if bugTriggerStep < baselineBugTriggerTime {
+						baselineBugTriggerTime = bugTriggerStep
+					}
+				} else {
+					if bugTriggerStep < rlBugTriggerTime {
+						rlBugTriggerTime = bugTriggerStep
+					}
+				}
+			}
+
 			// Accumulate episode reward and increment step count
 			episodeReward += reward
 			steps++
@@ -125,6 +145,22 @@ func (rlo *RLOrchestrator) Train() {
 		}
 	}
 	fmt.Println("\n--- RL Training Complete ---")
+
+	// Print comparison metrics
+	fmt.Println("\n--- Bug Trigger Time Comparison ---")
+	if rlo.Opts.IsBaseline {
+		if baselineBugTriggerTime != math.MaxInt {
+			fmt.Printf("Baseline First Bug Trigger Time: %d steps\n", baselineBugTriggerTime)
+		} else {
+			fmt.Println("Baseline: Bug not found within max steps.")
+		}
+	} else {
+		if rlBugTriggerTime != math.MaxInt {
+			fmt.Printf("RL First Bug Trigger Time: %d steps\n", rlBugTriggerTime)
+		} else {
+			fmt.Println("RL: Bug not found within max steps.")
+		}
+	}
 }
 
 // For demonstration, a simple way to check if a bug was found.

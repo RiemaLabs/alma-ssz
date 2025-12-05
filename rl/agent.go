@@ -13,6 +13,7 @@ type PolicyAgent struct {
 	memory     []*Experience
 	gamma      float64 // Discount factor
 	epsilon    float64 // Exploration rate
+	IsBaseline bool    // New: Flag to indicate if agent is in baseline mode
 }
 
 // Experience stores an agent's experience.
@@ -25,7 +26,7 @@ type Experience struct {
 }
 
 // NewPolicyAgent creates a new PolicyAgent.
-func NewPolicyAgent(actionSize int) *PolicyAgent {
+func NewPolicyAgent(actionSize int, isBaseline bool) *PolicyAgent {
 	policyNet := NewNeuralNetwork(len(Observation{}.Vector), actionSize) // Input size is the length of the observation vector
 	optimizer := NewOptimizer(policyNet, 0.001)                          // Learning rate
 	return &PolicyAgent{
@@ -35,13 +36,17 @@ func NewPolicyAgent(actionSize int) *PolicyAgent {
 		memory:     make([]*Experience, 0),
 		gamma:      0.5,  // Discount factor
 		epsilon:    0.9,  // Exploration rate for RL learning
-
+		IsBaseline: isBaseline,
 	}
 }
 
 // Act selects an action based on the current observation.
 func (agent *PolicyAgent) Act(obs Observation) Action {
-	// Epsilon-greedy exploration
+	if agent.IsBaseline {
+		// In baseline mode, always explore (random actions)
+		return Action{ID: rand.Intn(agent.actionSize)}
+	}
+	// Epsilon-greedy exploration for learning agent
 	if rand.Float64() < agent.epsilon {
 		// Explore: pick a random action ID
 		return Action{ID: rand.Intn(agent.actionSize)}
@@ -99,6 +104,10 @@ func (agent *PolicyAgent) ClearMemory() {
 // Learn updates the agent's policy based on experiences in memory.
 // This is a simplified REINFORCE-like update.
 func (agent *PolicyAgent) Learn() {
+	if agent.IsBaseline {
+		return // No learning in baseline mode
+	}
+
 	if len(agent.memory) == 0 {
 		return
 	}

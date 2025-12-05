@@ -81,7 +81,7 @@ type FuzzingEnv struct {
 }
 
 // NewFuzzingEnv creates a new FuzzingEnv for a given SSZ schema.
-func NewFuzzingEnv(targetSchema interface{}, maxSteps int, batchSize int) (*FuzzingEnv, error) {
+func NewFuzzingEnv(targetSchema interface{}, maxSteps int, batchSize int, d_ctx int) (*FuzzingEnv, error) {
 	specAnalyzer := spec.NewGenericAnalyzer() // Renamed from analyzer
 	domainsList, err := specAnalyzer.GetDomains(targetSchema)
 	if err != nil {
@@ -130,16 +130,17 @@ func (env *FuzzingEnv) Reset(initialHistorySummary []float64) *State {
 }
 
 // Step executes one step in the environment given a batch of actions selected by the agent.
-func (env *FuzzingEnv) Step(actions []Action) (*State, float64, bool, error) { // actions is now a slice
+func (env *FuzzingEnv) Step(actions []Action) (*State, float64, bool, int, error) { // actions is now a slice
 	if len(actions) != env.BatchSize {
-		return env.CurrentState, -1.0, true, fmt.Errorf("number of actions in batch (%d) does not match environment batch size (%d)", len(actions), env.BatchSize)
+		return env.CurrentState, -1.0, true, 0, fmt.Errorf("number of actions in batch (%d) does not match environment batch size (%d)", len(actions), env.BatchSize)
 	}
 
 	batchRuntimeSignature := feedback.RuntimeSignature{} // Aggregate signature for the batch
 	batchBugTriggered := false
 	batchReward := 0.0
-	
-batchTraces := make([][]analyzer.TraceEntry, 0, env.BatchSize)
+	bugTriggerStep := 0 // Initialize bugTriggerStep
+
+	batchTraces := make([][]analyzer.TraceEntry, 0, env.BatchSize)
 
 	for _, action := range actions { // Process each action in the batch
 		// 1. Convert Action (chosen by ID) to a partial EncodingMatrix for the Concretizer
@@ -171,14 +172,14 @@ batchTraces := make([][]analyzer.TraceEntry, 0, env.BatchSize)
 		if !ok {
 			batchReward -= 5.0
 			batchRuntimeSignature.NonBugErrorCount++ // Count this as a non-bug error for the batch
-			continue // Skip execution if not a marshaler
+			return env.CurrentState, batchReward, true, bugTriggerStep, fmt.Errorf("newInput is not a marshaler")
 		}
 		
 		sszBytes, err := marshaler.MarshalSSZ() 
 		if err != nil {
 			batchReward -= 5.0
 			batchRuntimeSignature.NonBugErrorCount++ // Count this as a non-bug error for the batch
-			continue // Skip execution if marshaling fails
+			return env.CurrentState, batchReward, true, bugTriggerStep, fmt.Errorf("failed to marshal ssz: %w", err)
 		}
 
 		// Apply mutations (Dirty Booleans etc.)
@@ -192,14 +193,17 @@ batchTraces := make([][]analyzer.TraceEntry, 0, env.BatchSize)
 		}
 
 		// 4. Execute and get feedback for single input, including trace
-		signature, bugTriggered, _, trace := env.Fuzzer.Execute(sszBytes) 
+		signature, bugTriggeredIndividual, _, trace := env.Fuzzer.Execute(sszBytes) 
 		
 		// 5. Aggregate results for the batch
 		batchRuntimeSignature.RoundtripSuccessCount += signature.RoundtripSuccessCount
 		batchRuntimeSignature.NonBugErrorCount      += signature.NonBugErrorCount
 		batchRuntimeSignature.BugFoundCount         += signature.BugFoundCount
-		if bugTriggered {
+		if bugTriggeredIndividual {
 			batchBugTriggered = true
+			if bugTriggerStep == 0 { // Record the first time a bug is triggered in the current step
+				bugTriggerStep = env.StepsCount + 1
+			}
 		}
 		batchTraces = append(batchTraces, trace)
 	} // End of batch processing loop
@@ -270,5 +274,5 @@ batchTraces := make([][]analyzer.TraceEntry, 0, env.BatchSize)
 	// 7. Check if episode is done
 	done := env.StepsCount >= env.MaxSteps || batchBugTriggered
 
-	return env.CurrentState, batchReward, done, nil
+	return env.CurrentState, batchReward, done, bugTriggerStep, nil
 }
