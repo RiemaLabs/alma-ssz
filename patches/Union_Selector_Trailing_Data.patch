@@ -1,0 +1,13 @@
+diff --git a/union_poc.go b/union_poc.go
+index 6abf9eb..16e8e40 100644
+--- a/union_poc.go
++++ b/union_poc.go
+@@ -25,7 +25,7 @@ func (u *DebugUnion) UnmarshalSSZTail(buf []byte) ([]byte, error) {
+ 
+ 	if u.Selector == 0 {
+ 		// None variant. Should have NO payload.
+-		return tail, nil
++		return []byte{}, nil
+ 	} else if u.Selector == 1 {
+ 		// Uint64 variant. Size 8.
+ 		if len(tail) < 8 {

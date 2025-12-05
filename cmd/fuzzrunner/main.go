@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 
 	"alma.local/ssz/internal/analyzer"
-	"alma.local/ssz/tracer"
+	"github.com/ferranbt/fastssz/tracer"
 
 	// Import the instrumented library.
 	ssz "github.com/ferranbt/fastssz"
@@ -69,17 +69,6 @@ func loadMetadata() {
 // For this experiment, let's just call `ssz.ReadOffset` and other helpers with random data?
 // No, that's too unit-testy.
 //
-// Let's try to use `fastssz.HashTreeRoot` or something generic if available.
-// Looking at `fastssz` exports:
-// It seems `fastssz` provides `HashNode`, `Proof`, etc.
-//
-// WAIT: `fastssz` is primarily a code generator. The runtime library is small.
-// The instrumentation I ran was on `workspace/fastssz` which is the runtime library.
-// So I should call functions in that library.
-//
-// Let's look at `workspace/fastssz/tests` or `workspace/fastssz/encode_test.go` to see what's testable.
-// `ReadOffset` is in `testutil.go`? No, `interface.go`?
-//
 // Let's try to verify if we can link first.
 
 func main() {
@@ -101,7 +90,7 @@ func main() {
 		}
 
 		// Run target
-		runTarget(data)
+	runTarget(data)
 
 		// Collect
 		// We need to convert tracer.TraceEntry to analyzer.TraceEntry
@@ -154,50 +143,6 @@ func main() {
 			fmt.Printf("Iter %d: Interesting Trace! Score: %.2f\n", i, score)
 			saveToCorpus(i, data)
 		}
-	}
-
-	// Verification Step: Branching
-	fmt.Println("\n--- Verifying Branching Dimensions ---")
-
-	// Run Branch A
-	tracer.Reset()
-	ssz.DemonstrateBranching(true)
-	rawTraceA := tracer.Snapshot()
-	// Copy to avoid aliasing when buffer is reused
-	traceA := make([]tracer.TraceEntry, len(rawTraceA))
-	copy(traceA, rawTraceA)
-	
-	fmt.Printf("Branch A Trace Len: %d\n", len(traceA))
-	if len(traceA) > 0 {
-		fmt.Printf("  Branch A CID: %d, Val: %d\n", traceA[0].CID, traceA[0].Value)
-	}
-
-	// Run Branch B
-	tracer.Reset()
-	ssz.DemonstrateBranching(false)
-	rawTraceB := tracer.Snapshot()
-	traceB := make([]tracer.TraceEntry, len(rawTraceB))
-	copy(traceB, rawTraceB)
-
-	fmt.Printf("Branch B Trace Len: %d\n", len(traceB))
-	if len(traceB) > 0 {
-		fmt.Printf("  Branch B CID: %d, Val: %d\n", traceB[0].CID, traceB[0].Value)
-	}
-
-	if len(traceA) > 0 && len(traceB) > 0 {
-		if traceA[0].CID != traceB[0].CID {
-			fmt.Println("SUCCESS: Different CIDs for 'x' in if/else blocks! Context sensitivity works.")
-		} else {
-			fmt.Println("FAILURE: Same CID for 'x' in if/else blocks (Context sensitivity failed).")
-		}
-	}
-
-	totalDims := az.GetTotalDimensions()
-	fmt.Printf("\n--- Dimensionality Stats ---\n")
-	fmt.Printf("Global Dimensionality (Total Unique Variables/Contexts Encountered): %d\n", totalDims)
-	fmt.Printf("Note: A 'Point' in this space is a sparse vector of %d dimensions.\n", totalDims)
-	if len(traceB) > 0 {
-		fmt.Printf("Example Run (Branch B) touched %d dimensions (non-nil values).\n", len(traceB))
 	}
 }
 

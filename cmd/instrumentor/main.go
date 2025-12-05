@@ -115,7 +115,7 @@ func instrumentFile(path string) error {
 	// Inject import
 	needsImport := true
 	for _, imp := range f.Imports {
-		if imp.Path != nil && imp.Path.Value == "\"alma.local/ssz/tracer\"" {
+		if imp.Path != nil && imp.Path.Value == "\"github.com/ferranbt/fastssz/tracer\"" {
 			needsImport = false
 			break
 		}
@@ -126,7 +126,7 @@ func instrumentFile(path string) error {
 			Tok: token.IMPORT,
 			Specs: []dst.Spec{
 				&dst.ImportSpec{
-					Path: &dst.BasicLit{Kind: token.STRING, Value: "\"alma.local/ssz/tracer\""},
+					Path: &dst.BasicLit{Kind: token.STRING, Value: "\"github.com/ferranbt/fastssz/tracer\""},
 				},
 			},
 		}

@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	// "alma.local/ssz/internal/corpus"
 	"alma.local/ssz/internal/targets"
+	"alma.local/ssz/internal/corpus"
 )
 
 var (
@@ -48,18 +48,15 @@ func main() {
 
 	for _, t := range selected {
 		fmt.Printf("[corpus] exporting %s -> %s (%s)\n", t.Name, base, format)
-		// loader := corpus.NewLoader(corpus.DefaultRoot, limit)
-		// seeds, err := loader.Collect(t.Name)
-		var seeds [][]byte
-		err = nil
+		loader := corpus.NewLoader(corpus.DefaultRoot, limit)
+		seeds, err := loader.Collect(t) // t is a targets.RoundTripTarget
 		if err != nil {
 			log.Fatalf("collect %s: %v", t.Name, err)
 		}
 		if len(seeds) == 0 {
-			// log.Fatalf("no seeds found for %s (check workspace/tests)", t.Name)
-			fmt.Println("Skipping corpus generation due to missing internal/corpus package")
+			log.Fatalf("no seeds found for %s (check internal/corpus implementation)", t.Name)
 		}
-		destName := fuzzFuncName(t)
+		destName := corpus.FuzzFuncName(t)
 		dest := filepath.Join(base, destName)
 		if format == "dir" {
 			if err := emitDir(dest, seeds); err != nil {
@@ -132,6 +129,3 @@ func emitZip(path string, seeds [][]byte) error {
 	return zipw.Close()
 }
 
-func fuzzFuncName(t targets.RoundTripTarget) string {
-	return fmt.Sprintf("Fuzz%sRoundTrip", t.Name)
-}

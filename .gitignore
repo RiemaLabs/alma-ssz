@@ -16,3 +16,9 @@ main.*.go
 # Generated SSZ encoders
 generated/
 agent.md
+
+# Go
+go.work.sum
+
+# Binaries
+instrumentor

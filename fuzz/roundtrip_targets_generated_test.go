@@ -3,9 +3,8 @@
 package fuzz
 
 import (
-	"testing"
-
 	v1alpha1 "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1"
+	"testing"
 )
 
 func FuzzAttestationRoundTrip(f *testing.F) {
