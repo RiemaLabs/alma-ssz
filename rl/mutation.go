@@ -77,7 +77,11 @@ func ApplyMutations(sszBytes []byte, mutations []concretizer.Mutation, targetSch
 
 	// Apply Mutations
 	for _, m := range mutations {
-		if m.Type == concretizer.MutationGap && m.GapSize > 0 {
+		switch m.Type {
+		case concretizer.MutationGap:
+			if m.GapSize <= 0 {
+				continue
+			}
 			// Find the first variable field to insert the gap before.
 			// This is the specific trigger for the Container Gap bug.
 			var firstVarField *FieldInfo
@@ -101,7 +105,7 @@ func ApplyMutations(sszBytes []byte, mutations []concretizer.Mutation, targetSch
 				if currentHeapOffset > len(mutatedBytes) {
 					currentHeapOffset = len(mutatedBytes)
 				}
-				
+
 				newBytes := make([]byte, 0, len(mutatedBytes)+m.GapSize)
 				newBytes = append(newBytes, mutatedBytes[:currentHeapOffset]...)
 				newBytes = append(newBytes, gap...)
@@ -122,7 +126,12 @@ func ApplyMutations(sszBytes []byte, mutations []concretizer.Mutation, targetSch
 				// Only apply one gap mutation per execution for simplicity
 				break
 			}
-		} else if m.Type == concretizer.MutationValue {
+		case concretizer.MutationTail:
+			// TailValue bucket encodes 0..8; if value length is 0, no-op.
+			if len(m.Value) > 0 {
+				mutatedBytes = append(mutatedBytes, m.Value...)
+			}
+		case concretizer.MutationValue:
 			// (Value mutation logic can be added here if needed for other bugs)
 		}
 	}

@@ -32,7 +32,6 @@ func (a *GenericAnalyzer) GetDomains(instance interface{}) ([]domains.Domain, er
 		fieldName := field.Name
 		fieldType := field.Type
 
-
 		// Skip fields that are generic internal helpers if any (naive check)
 		if strings.HasPrefix(fieldName, "_") {
 			continue
@@ -62,28 +61,7 @@ func (a *GenericAnalyzer) GetDomains(instance interface{}) ([]domains.Domain, er
 		case reflect.Array:
 			// Fixed-size array (e.g., [32]byte, [4]byte)
 			if fieldType.Elem().Kind() == reflect.Uint8 {
-				// Check for Bitvector[4] (which is [1]byte in Go)
-				if fieldType.Len() == 1 { // This implies a Bitvector4 or similar, where padding bits might matter
-					domain.Aspects = append(domain.Aspects, domains.FieldAspect{
-						ID:          "Padding",
-						Description: fmt.Sprintf("Padding bits for bitvector %s", fieldName),
-						Buckets: []domains.Bucket{
-							{
-								ID:          "CanonicalPadding",
-								Description: "Zero padding bits",
-								Range:       domains.Range{Min: 0, Max: 0}, // Signal to Concretizer to ensure zero padding
-								Tag:         "canonical",
-							},
-							{
-								ID:          "DirtyPadding",
-								Description: "Non-zero padding bits",
-								Range:       domains.Range{Min: 1, Max: 1}, // Signal to Concretizer to introduce dirty padding
-								Tag:         "bug",
-							},
-						},
-					})
-				}
-				// Content aspect for byte arrays
+				// Treat all byte arrays (including [1]byte bitvectors) with generic byte buckets.
 				domain.Aspects = append(domain.Aspects, domains.FieldAspect{
 					ID:          "ElementValue",
 					Description: fmt.Sprintf("Value of each element in %s", fieldName),
@@ -124,7 +102,7 @@ func (a *GenericAnalyzer) GetDomains(instance interface{}) ([]domains.Domain, er
 				if bucket.Range.Min > bucket.Range.Max {
 					bucket.Range.Min = bucket.Range.Max // Make it a single point or 0-0 range if Max is 0
 				}
-				
+
 				// Adjust MaxLen description and range if it's the MaxLen bucket
 				if bucket.ID == "MaxLen" {
 					bucket.Description = fmt.Sprintf("Max length (%d)", resolvedMaxLen)
@@ -135,7 +113,7 @@ func (a *GenericAnalyzer) GetDomains(instance interface{}) ([]domains.Domain, er
 					validLengthBuckets = append(validLengthBuckets, *bucket)
 				}
 			}
-			
+
 			domain.Aspects = append(domain.Aspects, domains.FieldAspect{
 				ID:          "Length",
 				Description: fmt.Sprintf("Length of slice %s", fieldName),
@@ -162,9 +140,6 @@ func (a *GenericAnalyzer) GetDomains(instance interface{}) ([]domains.Domain, er
 				},
 			})
 
-
-
-
 			if fieldType.Elem().Kind() == reflect.Uint8 {
 				// Element content aspect for byte slices
 				domain.Aspects = append(domain.Aspects, domains.FieldAspect{
@@ -181,6 +156,7 @@ func (a *GenericAnalyzer) GetDomains(instance interface{}) ([]domains.Domain, er
 				})
 			}
 		case reflect.Struct:
+			// Default recursion
 			domain.Aspects = append(domain.Aspects, domains.FieldAspect{
 				ID:          "Default",
 				Description: fmt.Sprintf("Recursive default for struct %s", fieldName),

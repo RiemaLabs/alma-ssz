@@ -1,9 +1,9 @@
 package spec
 
 import (
+	"alma.local/ssz/domains"
 	"fmt"
 	"math"
-	"alma.local/ssz/domains"
 )
 
 // GenerateUintBuckets creates a set of mutually exclusive buckets for unsigned integers.
@@ -57,10 +57,19 @@ var BoolBuckets = []domains.Bucket{
 }
 
 var ByteContentBuckets = []domains.Bucket{
-	{ID: "Zero", Description: "0x00", Range: domains.Range{Min: 0, Max: 0}, Tag: "content_byte"},
-	{ID: "One", Description: "0x01", Range: domains.Range{Min: 1, Max: 1}, Tag: "content_byte"},
-	{ID: "MidRange", Description: "Random byte in [2, 127]", Range: domains.Range{Min: 2, Max: 127}, Tag: "content_byte"},
-	{ID: "HighRange", Description: "Random byte in [128, 255]", Range: domains.Range{Min: 128, Max: 255}, Tag: "content_byte"},
+	{ID: "B_00", Description: "0x00", Range: domains.Range{Min: 0, Max: 0}, Tag: "content_byte"},
+	{ID: "B_01", Description: "0x01", Range: domains.Range{Min: 1, Max: 1}, Tag: "content_byte"},
+	{ID: "B_02_03", Description: "0x02-0x03", Range: domains.Range{Min: 2, Max: 3}, Tag: "content_byte"},
+	{ID: "B_04_07", Description: "0x04-0x07", Range: domains.Range{Min: 4, Max: 7}, Tag: "content_byte"},
+	{ID: "B_08_0F", Description: "0x08-0x0F", Range: domains.Range{Min: 8, Max: 15}, Tag: "content_byte"},
+	{ID: "B_10_1F", Description: "0x10-0x1F", Range: domains.Range{Min: 16, Max: 31}, Tag: "content_byte"},
+	{ID: "B_20_3F", Description: "0x20-0x3F", Range: domains.Range{Min: 32, Max: 63}, Tag: "content_byte"},
+	{ID: "B_40_5F", Description: "0x40-0x5F", Range: domains.Range{Min: 64, Max: 95}, Tag: "content_byte"},
+	{ID: "B_60_7F", Description: "0x60-0x7F", Range: domains.Range{Min: 96, Max: 127}, Tag: "content_byte"},
+	{ID: "B_80_9F", Description: "0x80-0x9F", Range: domains.Range{Min: 128, Max: 159}, Tag: "content_byte"},
+	{ID: "B_A0_BF", Description: "0xA0-0xBF", Range: domains.Range{Min: 160, Max: 191}, Tag: "content_byte"},
+	{ID: "B_C0_DF", Description: "0xC0-0xDF", Range: domains.Range{Min: 192, Max: 223}, Tag: "content_byte"},
+	{ID: "B_E0_FF", Description: "0xE0-0xFF", Range: domains.Range{Min: 224, Max: 255}, Tag: "content_byte"},
 }
 
 var SliceLengthBuckets = []domains.Bucket{
@@ -83,22 +92,13 @@ var ContainerDefaultBucket = []domains.Bucket{
 }
 
 func init() {
-	// Dilute the search space with dummy buckets to make finding the bug harder
+	// Optional: still dilute offsets a bit to keep gap bugs harder; keep a small number of offset dummies.
 	for i := 0; i < 50; i++ {
 		OffsetBuckets = append(OffsetBuckets, domains.Bucket{
 			ID:          domains.BucketID(fmt.Sprintf("Dummy_Offset_%d", i)),
 			Description: "Placeholder offset (no change)",
 			Range:       domains.Range{Min: 0, Max: 0},
 			Tag:         "offset_dummy",
-		})
-	}
-	// Add dummy buckets for byte content as well to make dirty padding hard to find
-	for i := 2; i < 255; i += 1 { // High dilution for byte values
-		ByteContentBuckets = append(ByteContentBuckets, domains.Bucket{
-			ID:          domains.BucketID(fmt.Sprintf("Dummy_Byte_%d", i)),
-			Description: "Placeholder clean byte",
-			Range:       domains.Range{Min: uint64(i), Max: uint64(i)},
-			Tag:         "content_byte_dummy",
 		})
 	}
 }

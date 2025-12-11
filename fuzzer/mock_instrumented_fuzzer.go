@@ -71,7 +71,7 @@ func (mf *MockInstrumentedFuzzer) Execute(sszBytes []byte) (
 	}
 
 	// 4. Simulate signature, bug, and coverage for now
-	signature = feedback.RuntimeSignature{}
+	signature = feedback.NewRuntimeSignature()
 	bugTriggered = false // No bug in DemonstrateBranching
 	newCoverageFound = false
 
@@ -91,6 +91,7 @@ func (mf *MockInstrumentedFuzzer) Execute(sszBytes []byte) (
 	if rand.Float64() < 0.01 { // 1% chance of finding a bug
 		bugTriggered = true
 		signature.BugFoundCount = 1
+		signature.BugKinds["MockBug"]++
 		fmt.Println("Mock bug triggered!")
 	}
 

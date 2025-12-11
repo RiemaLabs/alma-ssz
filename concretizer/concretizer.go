@@ -17,6 +17,7 @@ const (
 	MutationValue MutationType = iota
 	MutationOffset
 	MutationGap // Insert bytes to create gap
+	MutationTail
 )
 
 type Mutation struct {
@@ -83,7 +84,7 @@ func (c *Concretizer) concretizeStruct(structVal reflect.Value, matrix *encoding
 		for _, aspect := range fieldDomain.Aspects {
 			chosenBucketID, aspectChosen := selectedAspects[aspect.ID]
 			var chosenBucket domains.Bucket
-			
+
 			if aspectChosen {
 				// Find chosenBucket in aspect.Buckets
 				for _, b := range aspect.Buckets {
@@ -97,24 +98,16 @@ func (c *Concretizer) concretizeStruct(structVal reflect.Value, matrix *encoding
 				}
 			} else {
 				// Default behavior if aspect not explicitly chosen
-				if aspect.ID == "Padding" {
-					// Default "Padding" to "CanonicalPadding" if not explicitly chosen
-					for _, b := range aspect.Buckets {
-						if b.ID == "CanonicalPadding" {
-							chosenBucket = b
-							break
-						}
-					}
-					if chosenBucket.ID == "" {
-						return nil, fmt.Errorf("CanonicalPadding bucket not found for Padding aspect of field '%s'", field.Name)
-					}
+				if aspect.ID == "ElementValue" && fieldVal.Kind() == reflect.Array && fieldVal.Len() == 1 && fieldVal.Index(0).Kind() == reflect.Uint8 {
+					// Default bitvector ([1]byte) to zero byte unless explicitly chosen.
+					chosenBucket = domains.Bucket{ID: "DefaultZero", Range: domains.Range{Min: 0, Max: 0}}
 				} else if len(aspect.Buckets) > 0 {
 					chosenBucket = aspect.Buckets[rand.Intn(len(aspect.Buckets))] // Random default for other aspects
 				} else {
 					chosenBucket = domains.Bucket{ID: "Default", Range: domains.Range{Min: 0, Max: 0}} // Fallback empty bucket
 				}
 			}
-			
+
 			fieldMutations, err := c.applyAspect(fieldVal, aspect.ID, chosenBucket, field, domainMap)
 			if err != nil {
 				return nil, fmt.Errorf("failed to concretize field %s, aspect %s: %v", field.Name, aspect.ID, err)
@@ -188,36 +181,19 @@ func (c *Concretizer) applyAspect(val reflect.Value, aspectID domains.AspectID, 
 				// Sample a random gap size from the specified range
 				gapSize = int(bucket.Range.Min) + rand.Intn(int(bucket.Range.Max-bucket.Range.Min+1))
 			}
-			
+
 			mutations = append(mutations, Mutation{
 				Type:      MutationGap,
 				FieldName: fieldStruct.Name,
 				GapSize:   gapSize,
 			})
 		}
-	case "Padding":
-		// Handle padding mutations based on bucket ID
-		switch bucket.ID {
-		case "CanonicalPadding":
-			// Set the byte value such that high-order bits are zero.
-			// The original value has already been set by Concretizer.
-			// Here we just ensure padding bits are zero.
-			if val.CanSet() && val.Kind() == reflect.Uint8 {
-				originalVal := val.Uint()
-				val.SetUint(originalVal & 0x0F) // Assuming Bitvector[4], clear upper 4 bits
-				fmt.Printf("DEBUG: applyAspect: CanonicalPadding on %s, original: 0x%x, after mask: 0x%x\n", fieldStruct.Name, originalVal, val.Uint())
-			}
-		case "DirtyPadding":
-			// Set the byte value such that high-order bits are non-zero (0x1F as per paper).
-			if val.CanSet() && val.Kind() == reflect.Uint8 {
-				val.SetUint(0x1F) // Set to 0x1F to introduce dirty padding as in the paper
-				fmt.Printf("DEBUG: applyAspect: DirtyPadding on %s, set to 0x%x\n", fieldStruct.Name, val.Uint())
-			}
-		}
 	case "Default": // For structs/arrays of structs, default means recurse
 		switch val.Kind() {
 		case reflect.Struct:
-			return nil, c.concretizeStructRecursive(val)
+			if err := c.concretizeStructRecursive(val); err != nil {
+				return nil, err
+			}
 		case reflect.Array, reflect.Slice:
 			// Recurse on elements. Length should have been set by Length aspect.
 			for i := 0; i < val.Len(); i++ {
@@ -228,6 +204,7 @@ func (c *Concretizer) applyAspect(val reflect.Value, aspectID domains.AspectID, 
 				}
 			}
 		}
+		return mutations, nil
 	}
 	return mutations, nil
 }
@@ -284,9 +261,9 @@ func (c *Concretizer) setUint(val reflect.Value, r domains.Range) {
 			} else {
 				// Use rand.Int63n for smaller ranges, adjust for positive range.
 				// If diff+1 exceeds MaxInt64, Int63n cannot be used.
-				if diff < math.MaxInt64 { 
+				if diff < math.MaxInt64 {
 					sample = r.Min + uint64(rand.Int63n(int64(diff+1)))
-				} else { 
+				} else {
 					// For ranges between MaxInt64 and MaxUint64, use modulo from rand.Uint64()
 					sample = r.Min + (rand.Uint64() % (diff + 1))
 				}
@@ -304,14 +281,14 @@ func (c *Concretizer) setBool(val reflect.Value, r domains.Range, fieldName stri
 	} else if r.Min == 1 && r.Max == 1 {
 		val.SetBool(true)
 		return nil
-	} 
-	
+	}
+
 	// Dirty Boolean Logic (Min > 1)
 	if r.Min > 1 {
 		// We set the boolean to true/false arbitrarily (usually false so 0x00 -> 0xDirty is a change)
 		// but more importantly, we return a Mutation to override the byte.
 		val.SetBool(false) // Placeholder
-		
+
 		// Sample a random dirty byte from the range
 		dirtyByte := uint64(0)
 		diff := r.Max - r.Min
@@ -322,7 +299,7 @@ func (c *Concretizer) setBool(val reflect.Value, r domains.Range, fieldName stri
 		}
 		return &Mutation{Type: MutationValue, FieldName: fieldName, Value: []byte{byte(dirtyByte)}}
 	}
-	
+
 	// Default fallback
 	val.SetBool(false)
 	return nil
@@ -386,9 +363,9 @@ func (c *Concretizer) setLength(val reflect.Value, r domains.Range, fieldStruct 
 				} else {
 					// Use rand.Int63n for smaller ranges, adjust for positive range.
 					// If diff+1 exceeds MaxInt64, Int63n cannot be used.
-					if diff < math.MaxInt64 { 
+					if diff < math.MaxInt64 {
 						sampleLen = r.Min + uint64(rand.Int63n(int64(diff+1)))
-					} else { 
+					} else {
 						// For ranges between MaxInt64 and MaxUint64, use modulo from rand.Uint64()
 						sampleLen = r.Min + (rand.Uint64() % (diff + 1))
 					}
@@ -396,10 +373,10 @@ func (c *Concretizer) setLength(val reflect.Value, r domains.Range, fieldStruct 
 			}
 		}
 		length = int(sampleLen)
-		
+
 		// Cap length for MVP to avoid huge allocs
 		if length > 1024 { // Cap to 1024 to prevent out-of-memory for very large random lengths
-			length = 1024 
+			length = 1024
 		}
 	}
 

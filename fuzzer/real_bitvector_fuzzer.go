@@ -3,13 +3,13 @@ package fuzzer
 import (
 	"fmt"
 	"io/ioutil"
+	"math/rand" // For actual random numbers
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"text/template"
-	"time"    // Needed for rand.Seed
-	"math/rand" // For actual random numbers
+	"time" // Needed for rand.Seed
 
 	"alma.local/ssz/feedback" // Import feedback package
 )
@@ -21,8 +21,8 @@ func init() {
 // RealBitvectorFuzzer implements the Fuzzer interface for the bitvector example.
 // It interacts with the Go test framework and bug toggling scripts.
 type RealBitvectorFuzzer struct {
-	fuzzTestDir     string // Directory to place temporary Go test files
-	tempTestCounter int    // Counter for unique temporary test file names
+	fuzzTestDir     string  // Directory to place temporary Go test files
+	tempTestCounter int     // Counter for unique temporary test file names
 	currentCoverage float64 // Simulated, as real coverage is hard to get from this approach
 	lastNewCoverage float64 // Simulated
 }
@@ -35,15 +35,15 @@ func NewRealBitvectorFuzzer() (*RealBitvectorFuzzer, error) {
 		return nil, fmt.Errorf("failed to create temp dir for fuzzer: %w", err)
 	}
 	return &RealBitvectorFuzzer{
-		fuzzTestDir: tempDir,
+		fuzzTestDir:     tempDir,
 		currentCoverage: 0.0,
 		lastNewCoverage: 0.0,
-	}, nil 
+	}, nil
 }
 
 // Reset cleans up the temporary test directory and resets coverage metrics.
 func (rbf *RealBitvectorFuzzer) Reset() {
-	os.RemoveAll(rbf.fuzzTestDir) // Clean up old dir
+	os.RemoveAll(rbf.fuzzTestDir)                                   // Clean up old dir
 	rbf.fuzzTestDir, _ = ioutil.TempDir("", "bitvector_fuzz_tests") // Create new one
 	rbf.tempTestCounter = 0
 	rbf.currentCoverage = 0.0
@@ -112,9 +112,9 @@ type templateData struct {
 }
 
 // Execute performs one fuzzing execution step with the given SSZ bytes.
-func (rbf *RealBitvectorFuzzer) Execute(sszBytes []byte) (signature feedback.RuntimeSignature, bugTriggered bool, newCoverageFound bool) { 
+func (rbf *RealBitvectorFuzzer) Execute(sszBytes []byte) (signature feedback.RuntimeSignature, bugTriggered bool, newCoverageFound bool) {
 	rbf.tempTestCounter++
-	
+
 	// Initialize named return parameters
 	bugTriggered = false
 	newCoverageFound = false
@@ -158,7 +158,7 @@ func (rbf *RealBitvectorFuzzer) Execute(sszBytes []byte) (signature feedback.Run
 	// --- Execute the test file ---
 	// 1. Activate the bitvector bug.
 	rbf.toggleBug("activate", "bitvector")
-	
+
 	// 2. Build the generated Go test file into an executable.
 	execBinary := filepath.Join(rbf.fuzzTestDir, fmt.Sprintf("temp_fuzz_exec_%d", rbf.tempTestCounter))
 	buildCmd := exec.Command("go", "build", "-o", execBinary, testFileName)
@@ -175,12 +175,12 @@ func (rbf *RealBitvectorFuzzer) Execute(sszBytes []byte) (signature feedback.Run
 	runCmd := exec.Command(execBinary)
 	runCmd.Dir = "."
 	output, cmdErr := runCmd.CombinedOutput() // Capture both stdout and stderr.
-	
+
 	// 4. Deactivate the bitvector bug.
 	rbf.toggleBug("deactivate", "bitvector")
 
 	outputStr := string(output)
-	
+
 	// Synthesize RuntimeSignature from output
 	signature = rbf.generateSignature(outputStr) // Assign to named return parameter
 
@@ -191,7 +191,7 @@ func (rbf *RealBitvectorFuzzer) Execute(sszBytes []byte) (signature feedback.Run
 	if !bugTriggered && cmdErr == nil { // If it ran successfully (exit code 0) and no bug was explicitly found.
 		// If it's a successful roundtrip, simulate coverage gain.
 		if signature.RoundtripSuccessCount > 0 {
-			simulatedCoverageGain := 0.01 + (rand.Float64() * 0.05) 
+			simulatedCoverageGain := 0.01 + (rand.Float64() * 0.05)
 			rbf.currentCoverage += simulatedCoverageGain
 			rbf.lastNewCoverage = simulatedCoverageGain
 			newCoverageFound = simulatedCoverageGain > 0.01 // Report new coverage if it's above a minimal threshold.
@@ -203,7 +203,7 @@ func (rbf *RealBitvectorFuzzer) Execute(sszBytes []byte) (signature feedback.Run
 
 // generateSignature synthesizes a compact RuntimeSignature from raw fuzzer output.
 func (rbf *RealBitvectorFuzzer) generateSignature(output string) feedback.RuntimeSignature {
-	sig := feedback.RuntimeSignature{}
+	sig := feedback.NewRuntimeSignature()
 	if strings.Contains(output, "ROUNDTRIP_SUCCESS") {
 		sig.RoundtripSuccessCount++
 	}
@@ -212,6 +212,7 @@ func (rbf *RealBitvectorFuzzer) generateSignature(output string) feedback.Runtim
 	}
 	if strings.Contains(output, "BUG_FOUND") {
 		sig.BugFoundCount++
+		sig.BugKinds["RealBitvectorBug"]++
 	}
 	return sig
 }

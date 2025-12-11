@@ -26,9 +26,13 @@ type Experience struct {
 }
 
 // NewPolicyAgent creates a new PolicyAgent.
-func NewPolicyAgent(actionSize int, isBaseline bool) *PolicyAgent {
-	policyNet := NewNeuralNetwork(len(Observation{}.Vector), actionSize) // Input size is the length of the observation vector
-	optimizer := NewOptimizer(policyNet, 0.001)                          // Learning rate
+// obsSize controls the input dimensionality; if zero, the agent defaults to a bias-only policy.
+func NewPolicyAgent(actionSize int, isBaseline bool, obsSize int) *PolicyAgent {
+	if obsSize <= 0 {
+		obsSize = 1 // Avoid zero-sized networks so the agent can still learn a bias
+	}
+	policyNet := NewNeuralNetwork(obsSize, actionSize) // Input size is the length of the observation vector
+	optimizer := NewOptimizer(policyNet, 0.001)        // Learning rate
 	return &PolicyAgent{
 		actionSize: actionSize,
 		policyNet:  policyNet,
