@@ -1,4 +1,4 @@
-SSZ Internals playground for structural fuzzing.
+# Alma: specification-guided structural fuzzing for Ethereum SSZ implementations
 
 ## Layout
 - `workspace/`: heavyweight inputs cloned locally (consensus-specs, consensus-spec-tests mainnet slice, Prysm, fastssz, corpora, ...). Everything under this directory is ignored by git so you can freely sync upstream changes.

@@ -120,7 +120,7 @@ func (a *GenericAnalyzer) GetDomains(instance interface{}) ([]domains.Domain, er
 				Buckets:     validLengthBuckets,
 			})
 
-			// Add Offset Aspect for variable length fields based on SSZ specification (from alma_ccs26.pdf)
+			// Add Offset Aspect for variable length fields based on SSZ specification
 			domain.Aspects = append(domain.Aspects, domains.FieldAspect{
 				ID:          "Offset",
 				Description: fmt.Sprintf("Offset contiguity manipulation for slice %s", fieldName),

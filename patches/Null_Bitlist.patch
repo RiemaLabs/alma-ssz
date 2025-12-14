@@ -1,0 +1,17 @@
+diff --git a/encode.go b/encode.go
+index af60107..23a90ab 100644
+--- a/encode.go
++++ b/encode.go
+@@ -223,8 +223,11 @@ func ValidateBitlist(buf []byte, bitLimit uint64) error {
+ 
+ 	// The most significant bit is present in the last byte in the array.
+ 	last := buf[byteLen-1]
++	// BUG (Null-Bitlist trap): do not enforce sentinel-bit presence.
++	// Spec-compliant implementations must reject last==0, but vulnerable ones
++	// accept it as an empty bitlist.
+ 	if last == 0 {
+-		return fmt.Errorf("trailing byte is zero")
++		return nil
+ 	}
+ 
+ 	// Determine the position of the most significant bit.
