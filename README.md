@@ -2,10 +2,14 @@
 
 ## Layout
 - `workspace/`: heavyweight inputs cloned locally (consensus-specs, consensus-spec-tests mainnet slice, Prysm, fastssz, corpora, ...). Everything under this directory is ignored by git so you can freely sync upstream changes.
+- `benchschemas/`: benchmark harness schemas (fastssz regressions + py-ssz oracles).
 - `internal/`: Go packages for corpus loading, mutation helpers, and oracles.
 - `fuzz/`: Native Go fuzz entrypoints (`go test -run=Fuzz`).
 - `cmd/`: helper CLIs (corpus exporter, roundtrip generator, etc.).
 - `config/`: JSON descriptors that feed generators (currently `roundtrip_targets.json`).
+- `oracle/`: external oracles (py-ssz bridge).
+- `schemas/`: SSZ schema variants used by fuzzers and ablations.
+- `scripts/`: benchmark/ablation automation helpers.
 
 ## Quickstart
 1. Clone upstream dependencies (Phase 1 of `agent.md`):
@@ -15,6 +19,10 @@
    git clone https://github.com/ethereum/consensus-spec-tests workspace/tests   # mainnet slice only is fine
    git clone https://github.com/prysmaticlabs/prysm -b v5.0.4 workspace/prysm
    git clone https://github.com/ferranbt/fastssz workspace/fastssz
+   # Optional: separate fastssz workspace used for patching benchmarks (can be a symlink).
+   git clone https://github.com/ferranbt/fastssz workspace/fastssz_bench
+   # Optional: py-ssz for cross-client oracle benchmarks.
+   git clone https://github.com/ethereum/py-ssz workspace/py-ssz
    ```
 2. Install `sszgen` from the cloned fastssz repo:
    ```bash
@@ -37,46 +45,67 @@ To materialize the raw SSZ seeds (for archiving or debugging), run:
 go run ./cmd/corpusseed -out corpus/export -limit 256 -format zip
 ```
 
+## Optional: py-ssz Oracle Setup
+The py-ssz oracle powers cross-client benchmarks and schema-validation checks.
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -U pip
+python -m pip install -e workspace/py-ssz
+```
+If you are not using the default `.venv`, set:
+```bash
+export ALMA_PYSSZ_PYTHON=/path/to/python3
+```
+
+## Benchmark + Ablation Measurements
+- Run the full ablation suite (writes `ablation_results.csv`):
+  ```bash
+  python3 scripts/measure_ablation.py --budget 30s --max-steps 200000 --batch-size 50 --trials 5
+  ```
+- Measure fastssz regression exposure times (writes `fastssz_regression_tte.csv`):
+  ```bash
+  ./scripts/measure_fastssz_regressions.sh
+  ```
+- Build the consolidated benchmark CSV used by the paper:
+  ```bash
+  python3 scripts/build_benchmark_results.py
+  ```
+
 ## Regression Testing Workflow
 
-This project includes a workflow to test historical bugs from `fastssz`. The process uses patches to inject a bug and a generic fuzzing script to test for it.
+This project includes a workflow to test historical bugs from `fastssz`. The process uses patches to inject a bug and a generic fuzzing script to test for it. Patches are applied in `workspace/fastssz_bench` (use a second clone or symlink to `workspace/fastssz`).
 
 ### Scripts
 
-- `scripts/bug_toggle.sh`: Activates or deactivates a bug by applying or reverting a patch in the `workspace/fastssz` directory.
-- `scripts/run_fuzz.sh`: A generic script to run a round-trip fuzz test for any SSZ struct defined in the configuration.
+- `scripts/bug_toggle.sh`: Activates or deactivates a bug by applying or reverting a patch in the `workspace/fastssz_bench` directory.
+- `scripts/run_fastssz_regression.sh`: Applies a patch and runs `go test` for a single fastssz regression.
+- `scripts/measure_fastssz_regressions.sh`: Batch measurement for all fastssz regressions.
 
-### Available Bugs
+### Example Workflow: Testing a fastssz Regression
 
-- `ex1`: Trailing-byte/offset bug.
-- `ex2`: Bitvector dirty-padding bug.
-
-### Example Workflow: Testing the Trailing-Offset Bug
-
-Here is a step-by-step guide to test for bug `ex1` on the `SignedBeaconBlock` struct.
+Here is a step-by-step guide to test `FSSZ-147`.
 
 **1. Activate the Bug**
 
-Introduce the bug by applying the `ex1` patch in reverse.
+Introduce the bug by applying the regression patch.
 
 ```bash
-./scripts/bug_toggle.sh activate ex1
+./scripts/bug_toggle.sh activate FSSZ-147
 ```
 
 **2. Run the Fuzz Tester**
 
-Run the fuzzer against the `SignedBeaconBlock` struct. The harness will quickly find an input that causes a non-roundtrip due to the bug.
+Run the fastssz regression tests.
 
 ```bash
-./scripts/run_fuzz.sh SignedBeaconBlock 15s
+./scripts/run_fastssz_regression.sh FSSZ-147
 ```
-
-The fuzzer should exit with an error and save a failing input to `fuzz/testdata/FuzzSignedBeaconBlockRoundTrip/<hash>`.
 
 **3. Deactivate the Bug**
 
-Revert the `fastssz` workspace to its clean state.
+Revert the fastssz workspace to its clean state.
 
 ```bash
-./scripts/bug_toggle.sh deactivate ex1
+./scripts/bug_toggle.sh deactivate FSSZ-147
 ```
