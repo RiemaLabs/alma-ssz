@@ -1,0 +1,19 @@
+diff --git a/sszgen/generator/generator.go b/sszgen/generator/generator.go
+index 36ff697..b31d5e6 100644
+--- a/sszgen/generator/generator.go
++++ b/sszgen/generator/generator.go
+@@ -431,12 +431,9 @@ func isBasicType(v *Value) bool {
+ }
+ 
+ func (e *env) buildImports(imports []string) ([]string, error) {
+ 	res := []string{}
+-	for _, i := range imports {
+-		imp := e.findImport(i)
+-		if imp != "" {
+-			res = append(res, imp)
+-		}
++	for _, i := range e.imports {
++		res = append(res, i.getFullName())
+ 	}
+ 	return res, nil
+ }

@@ -20,6 +20,7 @@ import (
 var (
 	targetDir string
 	metadata  = make(map[string]VarInfo)
+	targetFile string
 )
 
 type VarInfo struct {
@@ -37,10 +38,9 @@ type Metadata struct {
 }
 
 func main() {
-	// flag.StringVar(&targetDir, "dir", "./workspace/fastssz", "Directory to instrument")
+	flag.StringVar(&targetFile, "file", "./schemas/schemas_encoding.go", "Go file to instrument")
 	flag.Parse()
 
-	targetFile := "./schemas/schemas_encoding.go"
 	log.Printf("Instrumenting file: %s", targetFile)
 
 	err := instrumentFile(targetFile) // Directly call instrumentFile

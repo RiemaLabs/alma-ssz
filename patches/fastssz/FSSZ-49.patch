@@ -1,0 +1,13 @@
+diff --git a/sszgen/generator/generator.go b/sszgen/generator/generator.go
+index 36ff697..f238c53 100644
+--- a/sszgen/generator/generator.go
++++ b/sszgen/generator/generator.go
+@@ -707,7 +707,7 @@ func (e *env) generateIR() error {
+ 
+ 	checkObjByPackage := func(packName, name string) (*astStruct, bool) {
+ 		for _, item := range e.raw {
+-			if item.name == name && item.packName == packName {
++			if item.name == name {
+ 				return item, true
+ 			}
+ 		}

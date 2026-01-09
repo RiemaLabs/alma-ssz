@@ -7,12 +7,17 @@ type Bitvector4 [1]byte
 // BitvectorStruct corresponds to Bitvector[4].
 type BitvectorStruct struct {
 	// Bitvector[4]
-	ValidationBits Bitvector4 `ssz-size:"1"` 
+	ValidationBits Bitvector4 `ssz-size:"1"`
 }
 
 // BooleanStruct for Dirty Boolean vulnerability.
 type BooleanStruct struct {
 	Val bool
+}
+
+// BitlistStruct for Null-Bitlist vulnerability.
+type BitlistStruct struct {
+	Bits []byte `ssz:"bitlist" ssz-max:"2048"`
 }
 
 // GapStruct for Variable-Length Container Gap vulnerability.

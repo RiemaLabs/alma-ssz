@@ -1,0 +1,13 @@
+diff --git a/encode.go b/encode.go
+index af60107..53496da 100644
+--- a/encode.go
++++ b/encode.go
+@@ -369,7 +369,7 @@ func (o *OffsetMarker) ReadOffset(buf []byte) (uint64, []byte, error) {
+ 		return 0, nil, ErrOffset
+ 	}
+ 	if !o.HasOffset {
+-		if offset != o.FixedSize {
++		if offset <= o.FixedSize {
+ 			return 0, nil, ErrInvalidVariableOffset
+ 		}
+ 		o.HasOffset = true

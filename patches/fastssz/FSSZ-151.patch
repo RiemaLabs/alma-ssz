@@ -1,0 +1,22 @@
+diff --git a/sszgen/generator/unmarshal.go b/sszgen/generator/unmarshal.go
+index dd3f78b..ad7d13b 100644
+--- a/sszgen/generator/unmarshal.go
++++ b/sszgen/generator/unmarshal.go
+@@ -153,7 +153,7 @@ func (v *Value) unmarshalList(dst string) string {
+ 		var tmpl string
+ 		var innerSize string
+ 
+-		if inner.isContainer() && !inner.noPtr {
++		if inner.isContainer() {
+ 			tmpl = `if err = ssz.UnmarshalSliceSSZ(&::.{{.name}}, {{.dst}}, {{.max}}); err != nil {
+ 			return nil, err
+ 		}`
+@@ -192,7 +192,7 @@ func (v *Value) unmarshalList(dst string) string {
+ 
+ 	var tmpl string
+ 
+-	if inner.isContainer() && !inner.noPtr {
++	if inner.isContainer() {
+ 		tmpl = `if err = ssz.UnmarshalDynamicSliceSSZ(&::.{{.name}}, {{.dst}}, {{.max}}); err != nil {
+ 			return nil, err
+ 		}`

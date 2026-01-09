@@ -1,0 +1,22 @@
+diff --git a/sszgen/generator/generator.go b/sszgen/generator/generator.go
+index 8619cad..0de437d 100644
+--- a/sszgen/generator/generator.go
++++ b/sszgen/generator/generator.go
+@@ -936,16 +936,7 @@ func (e *env) parseASTStructType(objTypeName string, name string) (*Value, error
+ 				}
+ 				fields = append(fields, f)
+ 			} else if len(f.Names) == 0 {
+-				// embed item in the same package, resolve it recursively
+-				ident, ok := f.Type.(*ast.Ident)
+-				if !ok {
+-					return nil, fmt.Errorf("embed type expects a typed object in same package but %s found", reflect.TypeOf(f.Type))
+-				}
+-				subFields, err := getFields(ident.Name)
+-				if err != nil {
+-					return nil, err
+-				}
+-				fields = append(fields, subFields...)
++				return nil, fmt.Errorf("embedded structs are not supported")
+ 			} else {
+ 				// inlined names
+ 				// For example: A, B uint64

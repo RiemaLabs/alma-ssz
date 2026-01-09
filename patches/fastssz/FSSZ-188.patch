@@ -1,0 +1,29 @@
+diff --git a/sszgen/generator/generator.go b/sszgen/generator/generator.go
+index 36ff697..a8e7a1a 100644
+--- a/sszgen/generator/generator.go
++++ b/sszgen/generator/generator.go
+@@ -942,23 +942,7 @@ func (e *env) parseASTStructType(objTypeName string, name string) (*Value, error
+ 				}
+ 				fields = append(fields, subFields...)
+ 			} else {
+-				// inlined names
+-				// For example: A, B uint64
+-				for _, name := range f.Names {
+-					if !isValidField(name.Name) {
+-						continue
+-					}
+-
+-					// create a copy of the field f and set a single name
+-					fieldCopy := &ast.Field{
+-						Doc:     f.Doc,
+-						Names:   []*ast.Ident{name},
+-						Tag:     f.Tag,
+-						Type:    f.Type,
+-						Comment: f.Comment,
+-					}
+-					fields = append(fields, fieldCopy)
+-				}
++				return nil, fmt.Errorf("multiple field names are not supported")
+ 			}
+ 		}
+ 		return fields, nil

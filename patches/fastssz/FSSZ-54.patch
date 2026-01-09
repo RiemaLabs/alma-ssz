@@ -1,0 +1,20 @@
+diff --git a/sszgen/generator/generator.go b/sszgen/generator/generator.go
+index 36ff697..ca9a267 100644
+--- a/sszgen/generator/generator.go
++++ b/sszgen/generator/generator.go
+@@ -1231,7 +1231,6 @@ func (e *env) parseASTFieldType(name, tags string, expr ast.Expr) (*Value, error
+ 			if vv.typ == nil {
+ 				panic("Cannot be nil")
+ 			}
+-			vv.noPtr = true
+ 			return vv, nil
+ 		}
+ 		return v, nil
+@@ -1270,7 +1269,6 @@ func (e *env) parseASTFieldType(name, tags string, expr ast.Expr) (*Value, error
+ 			return nil, fmt.Errorf("failed to encode %s: %v", sel, err)
+ 		}
+ 		vv.ref = exprName
+-		vv.noPtr = true
+ 		return vv, nil
+ 
+ 	default:

@@ -1,0 +1,30 @@
+diff --git a/sszgen/generator/size.go b/sszgen/generator/size.go
+index 8b95870..67a8b76 100755
+--- a/sszgen/generator/size.go
++++ b/sszgen/generator/size.go
+@@ -186,24 +186,7 @@ func (v *Value) fixedSizeAcc(acc *SizeAccumulator) {
+ 
+ func (v *Value) sizeContainer(name string, start bool) string {
+ 	if !start {
+-		tmpl := `{{if .check}} if ::.{{.name}} == nil {
+-			::.{{.name}} = new({{ref .obj}})
+-		}
+-		{{end}} {{ .dst }} += ::.{{.name}}.SizeSSZ()`
+-
+-		check := true
+-		if v.isListElem() {
+-			check = false
+-		}
+-		if v.noPtr {
+-			check = false
+-		}
+-		return execTmpl(tmpl, map[string]interface{}{
+-			"name":  v.name,
+-			"dst":   name,
+-			"obj":   v,
+-			"check": check,
+-		})
++		return fmt.Sprintf("%s += ::.%s.SizeSSZ()", name, v.name)
+ 	}
+ 	out := []string{}
+ 	for indx, v := range v.getObjs() {

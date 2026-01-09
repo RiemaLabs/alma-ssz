@@ -1,0 +1,21 @@
+diff --git a/sszgen/generator/generator.go b/sszgen/generator/generator.go
+index 36ff697..b2b8224 100644
+--- a/sszgen/generator/generator.go
++++ b/sszgen/generator/generator.go
+@@ -1206,6 +1206,16 @@ func (e *env) parseASTFieldType(name, tags string, expr ast.Expr) (*Value, error
+ 			}
+ 		}
+ 
++		if len(dims) > 1 {
++			if list, ok := outer.typ.(*List); ok {
++				if innerBytes, ok := list.Elem.typ.(*Bytes); ok && list.Elem.obj != "" && innerBytes.IsList {
++					if dims[len(dims)-1].IsList() {
++						list.MaxSize = dims[len(dims)-1].ListLen()
++					}
++				}
++			}
++		}
++
+ 		return outer, nil
+ 
+ 	case *ast.Ident:

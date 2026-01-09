@@ -1,0 +1,15 @@
+diff --git a/sszgen/generator/generator.go b/sszgen/generator/generator.go
+index 8619cad..739b0e8 100644
+--- a/sszgen/generator/generator.go
++++ b/sszgen/generator/generator.go
+@@ -1240,9 +1240,7 @@ func (e *env) parseASTFieldType(name, tags string, expr ast.Expr) (*Value, error
+ 		exprName := obj.X.(*ast.Ident).Name
+ 		sel := obj.Sel.Name
+ 
+-		if exprName == "time" && sel == "Time" {
+-			return &Value{typ: &Time{}}, nil
+-		} else if sel == "Bitlist" {
++		if sel == "Bitlist" {
+ 			// go-bitfield/Bitlist
+ 			maxSize, ok := getTagsInt(tags, "ssz-max")
+ 			if !ok {

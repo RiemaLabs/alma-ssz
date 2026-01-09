@@ -1,0 +1,15 @@
+diff --git a/sszgen/generator/tag_parser.go b/sszgen/generator/tag_parser.go
+index 1a251a6..7a5f72c 100644
+--- a/sszgen/generator/tag_parser.go
++++ b/sszgen/generator/tag_parser.go
+@@ -64,9 +64,7 @@ func GetSSZTags(tag string) (map[string]string, error) {
+ 		default:
+ 			if state == tsValue {
+ 				tags[labelStr] = trimTagQuotes(txt)
+-				state = tsLabel
+-				labelStr = ""
+-				continue
++				return tags, nil
+ 			}
+ 			if state == tsLabel {
+ 				labelStr += txt

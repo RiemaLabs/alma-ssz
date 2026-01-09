@@ -29,6 +29,7 @@ func ApplyMutations(sszBytes []byte, mutations []concretizer.Mutation, targetSch
 		FixedPartOffset int
 		IsVariable      bool
 		Name            string
+		Size            int
 	}
 
 	fieldInfos := []FieldInfo{}
@@ -70,6 +71,7 @@ func ApplyMutations(sszBytes []byte, mutations []concretizer.Mutation, targetSch
 			FixedPartOffset: currentFixedOffset,
 			IsVariable:      isVar,
 			Name:            fieldType.Name,
+			Size:            size,
 		})
 
 		currentFixedOffset += size
@@ -131,8 +133,83 @@ func ApplyMutations(sszBytes []byte, mutations []concretizer.Mutation, targetSch
 			if len(m.Value) > 0 {
 				mutatedBytes = append(mutatedBytes, m.Value...)
 			}
+		case concretizer.MutationBitlistNull:
+			var info *FieldInfo
+			for i := range fieldInfos {
+				if fieldInfos[i].Name == m.FieldName {
+					info = &fieldInfos[i]
+					break
+				}
+			}
+			if info == nil {
+				continue
+			}
+			if info.IsVariable {
+				ptrOffset := info.FixedPartOffset
+				if ptrOffset+4 > len(mutatedBytes) {
+					continue
+				}
+				varStart := int(binary.LittleEndian.Uint32(mutatedBytes[ptrOffset:]))
+				if varStart < 0 || varStart >= len(mutatedBytes) {
+					continue
+				}
+				varEnd := len(mutatedBytes)
+				for _, f := range fieldInfos {
+					if !f.IsVariable || f.FixedPartOffset <= ptrOffset {
+						continue
+					}
+					if f.FixedPartOffset+4 > len(mutatedBytes) {
+						continue
+					}
+					nextOffset := int(binary.LittleEndian.Uint32(mutatedBytes[f.FixedPartOffset:]))
+					if nextOffset > varStart && nextOffset < varEnd {
+						varEnd = nextOffset
+					}
+				}
+				if varEnd <= varStart {
+					continue
+				}
+				mutatedBytes[varEnd-1] = 0
+			} else if info.Size > 0 {
+				writeOffset := info.FixedPartOffset + info.Size - 1
+				if writeOffset >= 0 && writeOffset < len(mutatedBytes) {
+					mutatedBytes[writeOffset] = 0
+				}
+			}
 		case concretizer.MutationValue:
-			// (Value mutation logic can be added here if needed for other bugs)
+			if len(m.Value) == 0 {
+				continue
+			}
+			var info *FieldInfo
+			for i := range fieldInfos {
+				if fieldInfos[i].Name == m.FieldName {
+					info = &fieldInfos[i]
+					break
+				}
+			}
+			if info == nil {
+				continue
+			}
+			if info.IsVariable {
+				ptrOffset := info.FixedPartOffset
+				if ptrOffset+4 > len(mutatedBytes) {
+					continue
+				}
+				varStart := int(binary.LittleEndian.Uint32(mutatedBytes[ptrOffset:]))
+				if varStart < 0 || varStart >= len(mutatedBytes) {
+					continue
+				}
+				copy(mutatedBytes[varStart:], m.Value)
+				continue
+			}
+			writeOffset := info.FixedPartOffset
+			if info.Size > 0 && len(m.Value) == 1 {
+				writeOffset = info.FixedPartOffset + info.Size - 1
+			}
+			if writeOffset < 0 || writeOffset+len(m.Value) > len(mutatedBytes) {
+				continue
+			}
+			copy(mutatedBytes[writeOffset:], m.Value)
 		}
 	}
 

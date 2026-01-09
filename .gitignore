@@ -25,3 +25,5 @@ instrumentor
 .cache
 
 /docs/*
+.tmp
+*.pyc

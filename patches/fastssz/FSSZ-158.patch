@@ -1,0 +1,18 @@
+diff --git a/sszgen/generator/generator.go b/sszgen/generator/generator.go
+index 36ff697..6fbeec6 100644
+--- a/sszgen/generator/generator.go
++++ b/sszgen/generator/generator.go
+@@ -862,6 +862,13 @@ func (e *env) encodeItem(name, tags string) (*Value, error) {
+ 		if !ok {
+ 			return nil, fmt.Errorf("could not find struct with name '%s'", name)
+ 		}
++		if raw.isAlias() {
++			if arr, ok := raw.typ.(*ast.ArrayType); ok && arr.Len == nil {
++				if ident, ok := arr.Elt.(*ast.Ident); ok && ident.Name == "byte" {
++					return e.encodeItem(name, tags)
++				}
++			}
++		}
+ 		if raw.implFunc {
+ 			size, _ := getTagsInt(tags, "ssz-size")
+ 			v = &Value{noPtr: raw.obj == nil, typ: &Reference{Size: size}}

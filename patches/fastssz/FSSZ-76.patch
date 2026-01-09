@@ -1,0 +1,16 @@
+diff --git a/sszgen/generator/generator.go b/sszgen/generator/generator.go
+index 36ff697..5ac6aca 100644
+--- a/sszgen/generator/generator.go
++++ b/sszgen/generator/generator.go
+@@ -807,11 +807,6 @@ func (e *env) generateIR() error {
+ 
+ 	e.results = astResults
+ 	for _, obj := range e.raw {
+-		// If the user does not want to generate a struct we should skip it right away
+-		if e.excludeTypeNames[obj.name] {
+-			continue
+-		}
+-
+ 		name := obj.name
+ 
+ 		var valid bool

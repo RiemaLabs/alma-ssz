@@ -1,0 +1,16 @@
+diff --git a/sszgen/generator/generator.go b/sszgen/generator/generator.go
+index 36ff697..fa44d87 100644
+--- a/sszgen/generator/generator.go
++++ b/sszgen/generator/generator.go
+@@ -528,10 +528,7 @@ func decodeASTStruct(file *ast.File) *astResult {
+ 							}
+ 						}
+ 					} else {
+-						if _, ok := typeSpec.Type.(*ast.InterfaceType); !ok {
+-							// type is an alias (skip interfaces)
+-							obj.typ = typeSpec.Type
+-						}
++						obj.typ = typeSpec.Type
+ 					}
+ 					if obj.obj != nil || obj.typ != nil {
+ 						res.objs = append(res.objs, obj)

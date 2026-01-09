@@ -1,0 +1,12 @@
+diff --git a/sszgen/generator/generator.go b/sszgen/generator/generator.go
+index 36ff697..0f2ced4 100644
+--- a/sszgen/generator/generator.go
++++ b/sszgen/generator/generator.go
+@@ -303,7 +303,6 @@ func (e *env) hashSource() (string, error) {
+ 	for name := range e.files {
+ 		filenames = append(filenames, name)
+ 	}
+-	sort.Strings(filenames)
+ 
+ 	content := ""
+ 	for _, name := range filenames {

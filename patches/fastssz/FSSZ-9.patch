@@ -1,0 +1,18 @@
+diff --git a/sszgen/generator/hash.go b/sszgen/generator/hash.go
+index 1a48036..4d465da 100755
+--- a/sszgen/generator/hash.go
++++ b/sszgen/generator/hash.go
+@@ -144,12 +144,7 @@ func (v *Value) hashTreeRoot(name string, appendBytes bool) string {
+ 		return fmt.Sprintf("hh.PutUint%d(%s)", bitLen, name)
+ 
+ 	case *BitList:
+-		tmpl := `if len({{.name}}) == 0 {
+-			err = ssz.ErrEmptyBitlist
+-			return
+-		}
+-		hh.PutBitlist({{.name}}, {{.size}})
+-		`
++		tmpl := `hh.PutBitlist({{.name}}, {{.size}})`
+ 		return execTmpl(tmpl, map[string]interface{}{
+ 			"name": name,
+ 			"size": obj.Size,

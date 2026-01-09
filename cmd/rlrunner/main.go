@@ -18,6 +18,7 @@ func main() {
 	flag.StringVar(&opts.SchemaName, "schema", "AttestationData", "Name of the schema to fuzz (e.g., 'AttestationData', 'BeaconState')")
 	flag.IntVar(&opts.BatchSize, "batch-size", 10, "Number of inputs per step")
 	flag.BoolVar(&opts.IsBaseline, "baseline", false, "Run in baseline mode (no RL agent learning)")
+	flag.BoolVar(&opts.NoRL, "no-rl", false, "Disable learning while keeping SGIA buckets (uniform random bucket selection)")
 	flag.IntVar(&opts.D_ctx, "d-ctx", 7, "Dimensionality of the observation context for the RL agent") // New flag
 	flag.BoolVar(&opts.RequireBitvectorBug, "require-bitvector-bug", false, "Only treat Bitvector dirty padding as bug trigger")
 	flag.Parse()

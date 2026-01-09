@@ -1,0 +1,22 @@
+diff --git a/sszgen/generator/generator.go b/sszgen/generator/generator.go
+index 36ff697..8ec0662 100644
+--- a/sszgen/generator/generator.go
++++ b/sszgen/generator/generator.go
+@@ -1078,8 +1078,15 @@ func (e *env) parseASTFieldType(name, tags string, expr ast.Expr) (*Value, error
+ 				if astSize != nil {
+ 					// we cannot do here dynamic because we rely on the size
+ 					// on the tags
+-					outer.typ = &Bytes{
+-						Size: NewSizeNum(*astSize),
++					if tags == "" {
++						outer.typ = &Bytes{
++							Size:    NewSizeNum(*astSize),
++							IsGoDyn: true,
++						}
++					} else {
++						outer.typ = &Bytes{
++							Size: NewSizeNum(*astSize),
++						}
+ 					}
+ 				} else {
+ 					outer.typ = &Bytes{

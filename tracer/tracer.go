@@ -14,7 +14,7 @@ type TraceEntry struct {
 
 // RingBuffer is a simple circular buffer for storing traces.
 // We use a power of 2 size for bitwise masking.
-const BufferSize = 1024 * 1024 
+const BufferSize = 1024 * 1024
 
 var (
 	Buffer [BufferSize]TraceEntry
@@ -82,9 +82,9 @@ func ToScalar(v any) int64 {
 		}
 		return 0
 	case string:
-		return int64(len(val)) // Track length for strings
+		return hashSampledString(val)
 	case []byte:
-		return int64(len(val)) // Track length for byte slices
+		return hashSampledBytes(val)
 	}
 
 	// Fallback to reflection for more complex types (arrays, slices, maps)
@@ -111,4 +111,60 @@ func hash64(data []byte) int64 {
 	h := fnv.New64a()
 	h.Write(data)
 	return int64(h.Sum64())
+}
+
+func hashSampledBytes(b []byte) int64 {
+	if len(b) == 0 {
+		return 0
+	}
+	const (
+		fnvOffset64 = 1469598103934665603
+		fnvPrime64  = 1099511628211
+		maxSample   = 8
+	)
+	h := uint64(fnvOffset64)
+	limit := len(b)
+	if limit > maxSample {
+		limit = maxSample
+	}
+	for i := 0; i < limit; i++ {
+		h ^= uint64(b[i])
+		h *= fnvPrime64
+	}
+	if len(b) > maxSample {
+		for i := len(b) - maxSample; i < len(b); i++ {
+			h ^= uint64(b[i])
+			h *= fnvPrime64
+		}
+	}
+	h ^= uint64(len(b))
+	return int64(h)
+}
+
+func hashSampledString(s string) int64 {
+	if len(s) == 0 {
+		return 0
+	}
+	const (
+		fnvOffset64 = 1469598103934665603
+		fnvPrime64  = 1099511628211
+		maxSample   = 8
+	)
+	h := uint64(fnvOffset64)
+	limit := len(s)
+	if limit > maxSample {
+		limit = maxSample
+	}
+	for i := 0; i < limit; i++ {
+		h ^= uint64(s[i])
+		h *= fnvPrime64
+	}
+	if len(s) > maxSample {
+		for i := len(s) - maxSample; i < len(s); i++ {
+			h ^= uint64(s[i])
+			h *= fnvPrime64
+		}
+	}
+	h ^= uint64(len(s))
+	return int64(h)
 }

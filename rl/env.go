@@ -2,6 +2,7 @@ package rl
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"reflect"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"alma.local/ssz/feedback" // New import for RuntimeSignature
 	"alma.local/ssz/fuzzer"
 	"alma.local/ssz/internal/analyzer" // New import for analyzer
+	"alma.local/ssz/oracle/pyssz"
 	"alma.local/ssz/spec"
 	"github.com/ferranbt/fastssz"
 )
@@ -87,14 +89,14 @@ type FuzzingEnv struct {
 
 // NewFuzzingEnv creates a new FuzzingEnv for a given SSZ schema.
 // When isBaseline is true, we remove Tail aspects to mirror the harder pre-bucket baseline.
-func NewFuzzingEnv(targetSchema interface{}, maxSteps int, batchSize int, d_ctx int, isBaseline bool, requireBitvectorBug bool) (*FuzzingEnv, error) {
+func NewFuzzingEnv(targetSchema interface{}, opts RLOpts) (*FuzzingEnv, error) {
 	specAnalyzer := spec.NewGenericAnalyzer() // Renamed from analyzer
 	domainsList, err := specAnalyzer.GetDomains(targetSchema)
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze schema: %w", err)
 	}
 
-	if isBaseline {
+	if opts.IsBaseline {
 		// Strip Tail aspects so the baseline matches the pre-commit difficulty (no easy trailing-bytes mutation).
 		for di := range domainsList {
 			filtered := domains.Domain{
@@ -145,6 +147,35 @@ func NewFuzzingEnv(targetSchema interface{}, maxSteps int, batchSize int, d_ctx 
 		}
 	}
 
+	if opts.DisableTail || opts.DisableGap || !opts.EnableBitlistNull {
+		for di := range domainsList {
+			var filteredAspects []domains.FieldAspect
+			for _, aspect := range domainsList[di].Aspects {
+				if opts.DisableTail && aspect.ID == "Tail" {
+					continue
+				}
+				if !opts.EnableBitlistNull && aspect.ID == "BitlistSentinel" {
+					continue
+				}
+				if opts.DisableGap && aspect.ID == "Offset" {
+					var buckets []domains.Bucket
+					for _, bucket := range aspect.Buckets {
+						if bucket.ID == "GapOffset" {
+							continue
+						}
+						buckets = append(buckets, bucket)
+					}
+					if len(buckets) == 0 {
+						continue
+					}
+					aspect.Buckets = buckets
+				}
+				filteredAspects = append(filteredAspects, aspect)
+			}
+			domainsList[di].Aspects = filteredAspects
+		}
+	}
+
 	encodingCtx := NewEncodingContext(domainsList) // Use from action_space
 	if encodingCtx.ActionCount() == 0 {
 		return nil, fmt.Errorf("no actions found for the given schema")
@@ -183,6 +214,13 @@ func NewFuzzingEnv(targetSchema interface{}, maxSteps int, batchSize int, d_ctx 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create in-process fuzzer: %w", err)
 	}
+	if opts.ExternalOracle == "pyssz" {
+		oracle, err := pyssz.NewOracle(opts.SchemaName, opts.ExternalBug)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize py-ssz oracle: %w", err)
+		}
+		realFuzzer.SetExternalOracle(oracle, opts.SchemaName)
+	}
 
 	env := &FuzzingEnv{
 		Analyzer:            specAnalyzer,
@@ -194,13 +232,13 @@ func NewFuzzingEnv(targetSchema interface{}, maxSteps int, batchSize int, d_ctx 
 		BitvectorFields:     bitvectorFields,
 		NonBVActionIDs:      nonBVActionIDs,
 		BVActionIDs:         bvActionIDs,
-		RequireBitvectorBug: requireBitvectorBug,
+		RequireBitvectorBug: opts.RequireBitvectorBug,
 		Fuzzer:              realFuzzer, // Use the real fuzzer here
-		MaxSteps:            maxSteps,
-		BatchSize:           batchSize, // Initialize BatchSize
-		IsBaseline:          isBaseline,
+		MaxSteps:            opts.MaxSteps,
+		BatchSize:           opts.BatchSize, // Initialize BatchSize
+		IsBaseline:          opts.IsBaseline,
 		// Initial empty state with RuntimeSignature and empty historySummary
-		CurrentState:  NewState(feedback.NewRuntimeSignature(), []float64{}, 0.0, 0.0, make([]float64, d_ctx)),
+		CurrentState:  NewState(feedback.NewRuntimeSignature(), []float64{}, 0.0, 0.0, make([]float64, opts.D_ctx)),
 		EpisodeReward: 0.0,
 		StepsCount:    0,
 	}
@@ -228,6 +266,7 @@ func (env *FuzzingEnv) Step(actions []Action) (*State, float64, bool, int, error
 	batchRuntimeSignature := feedback.NewRuntimeSignature() // Aggregate signature for the batch
 	batchBugTriggered := false
 	batchReward := 0.0
+	batchNewCoverage := 0.0
 	bugTriggerStep := 0 // Initialize bugTriggerStep
 
 	batchTraces := make([][]analyzer.TraceEntry, 0, env.BatchSize)
@@ -239,6 +278,7 @@ func (env *FuzzingEnv) Step(actions []Action) (*State, float64, bool, int, error
 			rand.Read(payload)
 
 			signature, bugTriggeredIndividual, _, trace := env.Fuzzer.Execute(payload)
+			batchNewCoverage += env.Fuzzer.NewCoverage()
 
 			batchRuntimeSignature.RoundtripSuccessCount += signature.RoundtripSuccessCount
 			batchRuntimeSignature.NonBugErrorCount += signature.NonBugErrorCount
@@ -310,7 +350,17 @@ func (env *FuzzingEnv) Step(actions []Action) (*State, float64, bool, int, error
 			}
 
 			// 4. Execute and get feedback for single input, including trace
-			signature, bugTriggeredIndividual, _, trace := env.Fuzzer.Execute(sszBytes)
+			var (
+				signature              feedback.RuntimeSignature
+				bugTriggeredIndividual bool
+				trace                  []analyzer.TraceEntry
+			)
+			if objFuzzer, ok := env.Fuzzer.(fuzzer.ObjectFuzzer); ok {
+				signature, bugTriggeredIndividual, _, trace = objFuzzer.ExecuteWithObject(sszBytes, newInput)
+			} else {
+				signature, bugTriggeredIndividual, _, trace = env.Fuzzer.Execute(sszBytes)
+			}
+			batchNewCoverage += env.Fuzzer.NewCoverage()
 
 			// 5. Aggregate results for the batch
 			batchRuntimeSignature.RoundtripSuccessCount += signature.RoundtripSuccessCount
@@ -353,8 +403,12 @@ func (env *FuzzingEnv) Step(actions []Action) (*State, float64, bool, int, error
 	// Average KL score per input
 	avgKLScore := klScore / float64(env.BatchSize)
 
-	// Normalize KL score by batch size, or scale appropriately
-	batchReward += avgKLScore * 25.0 // Increased scaling factor to amplify signal
+	// Reward shaping: compress KL, reward new coverage, and discourage invalid inputs.
+	scaledKL := math.Log1p(avgKLScore)
+	batchReward += scaledKL * 8.0
+	batchReward += batchNewCoverage * 0.5
+	batchReward += float64(batchRuntimeSignature.RoundtripSuccessCount) * 0.05
+	batchReward -= float64(batchRuntimeSignature.NonBugErrorCount) * 0.25
 
 	// Add a small penalty for each batch step to encourage efficiency
 	batchReward -= float64(env.BatchSize) * 0.1

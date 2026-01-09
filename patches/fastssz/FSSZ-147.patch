@@ -1,0 +1,16 @@
+diff --git a/hasher.go b/hasher.go
+index ec3975d..33d1bc3 100755
+--- a/hasher.go
++++ b/hasher.go
+@@ -358,10 +358,7 @@ func getDepth(d uint64) uint8 {
+ }
+ 
+ func (h *Hasher) merkleizeImpl(dst []byte, input []byte, limit uint64) []byte {
+-	// count is the number of 32 byte chunks from the input, after right-padding
+-	// with zeroes to the next multiple of 32 bytes when the input is not aligned
+-	// to a multiple of 32 bytes.
+-	count := uint64((len(input) + 31) / 32)
++	count := uint64(len(input) / 32)
+ 	if limit == 0 {
+ 		limit = count
+ 	} else if count > limit {

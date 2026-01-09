@@ -15,6 +15,7 @@ type EncodingContextAction struct { // Renamed from Action to avoid conflict
 	FieldName string
 	AspectID  domains.AspectID
 	BucketID  domains.BucketID
+	Tag       string
 }
 
 // EncodingContext holds all possible actions for an SSZ schema, derived from the analyzer's output.
@@ -41,6 +42,7 @@ func NewEncodingContext(domains []domains.Domain) *EncodingContext {
 					FieldName: d.FieldName,
 					AspectID:  aspect.ID,
 					BucketID:  bucket.ID,
+					Tag:       bucket.Tag,
 				}
 				key := fmt.Sprintf("%s_%s_%s", action.FieldName, action.AspectID, action.BucketID)
 				ctx.actionToIndex[key] = actionIndex

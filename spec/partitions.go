@@ -62,6 +62,7 @@ var ByteContentBuckets = []domains.Bucket{
 	{ID: "B_02_03", Description: "0x02-0x03", Range: domains.Range{Min: 2, Max: 3}, Tag: "content_byte"},
 	{ID: "B_04_07", Description: "0x04-0x07", Range: domains.Range{Min: 4, Max: 7}, Tag: "content_byte"},
 	{ID: "B_08_0F", Description: "0x08-0x0F", Range: domains.Range{Min: 8, Max: 15}, Tag: "content_byte"},
+	{ID: "HighRange", Description: "Dirty padding candidate (0x10-0xFF)", Range: domains.Range{Min: 16, Max: 255}, Tag: "dirty"},
 	{ID: "B_10_1F", Description: "0x10-0x1F", Range: domains.Range{Min: 16, Max: 31}, Tag: "content_byte"},
 	{ID: "B_20_3F", Description: "0x20-0x3F", Range: domains.Range{Min: 32, Max: 63}, Tag: "content_byte"},
 	{ID: "B_40_5F", Description: "0x40-0x5F", Range: domains.Range{Min: 64, Max: 95}, Tag: "content_byte"},
@@ -70,6 +71,14 @@ var ByteContentBuckets = []domains.Bucket{
 	{ID: "B_A0_BF", Description: "0xA0-0xBF", Range: domains.Range{Min: 160, Max: 191}, Tag: "content_byte"},
 	{ID: "B_C0_DF", Description: "0xC0-0xDF", Range: domains.Range{Min: 192, Max: 223}, Tag: "content_byte"},
 	{ID: "B_E0_FF", Description: "0xE0-0xFF", Range: domains.Range{Min: 224, Max: 255}, Tag: "content_byte"},
+}
+
+var TailBuckets = []domains.Bucket{
+	{ID: "NoTail", Description: "No trailing bytes", Range: domains.Range{Min: 0, Max: 0}, Tag: "tail"},
+	{ID: "Tail1", Description: "Append 1 trailing byte", Range: domains.Range{Min: 1, Max: 1}, Tag: "tail"},
+	{ID: "Tail2", Description: "Append 2 trailing bytes", Range: domains.Range{Min: 2, Max: 2}, Tag: "tail"},
+	{ID: "Tail3_4", Description: "Append 3-4 trailing bytes", Range: domains.Range{Min: 3, Max: 4}, Tag: "tail"},
+	{ID: "Tail5_8", Description: "Append 5-8 trailing bytes", Range: domains.Range{Min: 5, Max: 8}, Tag: "tail"},
 }
 
 var SliceLengthBuckets = []domains.Bucket{

@@ -1,0 +1,14 @@
+diff --git a/sszgen/generator/generator.go b/sszgen/generator/generator.go
+index 8619cad..96350fb 100644
+--- a/sszgen/generator/generator.go
++++ b/sszgen/generator/generator.go
+@@ -1073,6 +1073,9 @@ func (e *env) parseASTFieldType(name, tags string, expr ast.Expr) (*Value, error
+ 
+ 		switch eeType := obj.Elt.(type) {
+ 		case *ast.Ident:
++			if eeType.Name == "uint32" && astSize == nil {
++				return nil, fmt.Errorf("uint32 lists are not supported")
++			}
+ 			if eeType.Name == "byte" {
+ 				// [x]byte
+ 				if astSize != nil {

@@ -1,9 +1,9 @@
 package schemas
 
 import (
+	"hash/crc32"
 	"strings"
 	"testing"
-    "hash/crc32"
 
 	"alma.local/ssz/internal/oracle"
 )
@@ -35,6 +35,16 @@ func FuzzBooleanBug(f *testing.F) {
 	})
 }
 
+func FuzzBitlistBug(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte) {
+		if err := oracle.RoundTrip[BitlistStruct](data); err != nil {
+			if strings.Contains(err.Error(), "bug triggered") {
+				t.Fatalf("Bug triggered: %v", err)
+			}
+		}
+	})
+}
+
 func FuzzGapBug(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		if err := oracle.RoundTrip[GapStruct](data); err != nil {
@@ -50,25 +60,25 @@ func FuzzGapBug(f *testing.F) {
 func FuzzHardBitvectorBug(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		err := oracle.RoundTrip[HardBitvectorStruct](data)
-        
-        var obj HardBitvectorStruct
-        if uErr := obj.UnmarshalSSZ(data); uErr != nil {
-            return // Invalid SSZ, ignore
-        }
-        
-        sum := crc32.ChecksumIEEE(obj.Padding[:])
-        if uint32(obj.Magic) != sum {
-            return // Mismatch, ignore potential bug
-        }
+
+		var obj HardBitvectorStruct
+		if uErr := obj.UnmarshalSSZ(data); uErr != nil {
+			return // Invalid SSZ, ignore
+		}
+
+		sum := crc32.ChecksumIEEE(obj.Padding[:])
+		if uint32(obj.Magic) != sum {
+			return // Mismatch, ignore potential bug
+		}
 
 		if err == nil {
 			if len(obj.Target) == 1 && (obj.Target[0]&0xF0 != 0) {
-                t.Logf("Magic: %x, Sum: %x", obj.Magic, sum)
+				t.Logf("Magic: %x, Sum: %x", obj.Magic, sum)
 				t.Fatalf("Bug triggered: SUT accepted dirty bitvector %x", data)
 			}
 		}
 		if err != nil && strings.Contains(err.Error(), "bug triggered") {
-            t.Logf("Magic: %x, Sum: %x", obj.Magic, sum)
+			t.Logf("Magic: %x, Sum: %x", obj.Magic, sum)
 			t.Fatalf("Bug triggered: %v", err)
 		}
 	})
@@ -77,16 +87,16 @@ func FuzzHardBitvectorBug(f *testing.F) {
 func FuzzHardBooleanBug(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		err := oracle.RoundTrip[HardBooleanStruct](data)
-        
-        var obj HardBooleanStruct
-        if uErr := obj.UnmarshalSSZ(data); uErr != nil {
-            return
-        }
-        // HardBooleanStruct uses LargeBuffer
-        sum := crc32.ChecksumIEEE(obj.LargeBuffer[:])
-        if uint32(obj.Magic) != sum {
-            return
-        }
+
+		var obj HardBooleanStruct
+		if uErr := obj.UnmarshalSSZ(data); uErr != nil {
+			return
+		}
+		// HardBooleanStruct uses LargeBuffer
+		sum := crc32.ChecksumIEEE(obj.LargeBuffer[:])
+		if uint32(obj.Magic) != sum {
+			return
+		}
 
 		if err != nil && strings.Contains(err.Error(), "bug triggered") {
 			t.Fatalf("Bug triggered: %v", err)
@@ -97,15 +107,15 @@ func FuzzHardBooleanBug(f *testing.F) {
 func FuzzHardGapBug(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		err := oracle.RoundTrip[HardGapStruct](data)
-        
-        var obj HardGapStruct
-        if uErr := obj.UnmarshalSSZ(data); uErr != nil {
-            return
-        }
-        sum := crc32.ChecksumIEEE(obj.Padding[:])
-        if uint32(obj.Magic) != sum {
-            return
-        }
+
+		var obj HardGapStruct
+		if uErr := obj.UnmarshalSSZ(data); uErr != nil {
+			return
+		}
+		sum := crc32.ChecksumIEEE(obj.Padding[:])
+		if uint32(obj.Magic) != sum {
+			return
+		}
 
 		if err != nil && strings.Contains(err.Error(), "bug triggered") {
 			t.Fatalf("Bug triggered: %v", err)

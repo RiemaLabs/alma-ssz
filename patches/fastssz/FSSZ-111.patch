@@ -1,0 +1,23 @@
+diff --git a/sszgen/generator/hash.go b/sszgen/generator/hash.go
+index 1a48036..663ec6c 100755
+--- a/sszgen/generator/hash.go
++++ b/sszgen/generator/hash.go
+@@ -55,7 +55,6 @@ func (v *Value) hashRoots(isList bool) string {
+ 			// we need to use PutBytes in order to hash the result since
+ 			// is higher than 32 bytes
+ 			appendFn = "PutBytes"
+-			elemSize = obj.Size.Size
+ 		} else {
+ 			appendFn = "Append"
+ 			elemSize = 32
+@@ -76,10 +75,6 @@ func (v *Value) hashRoots(isList bool) string {
+ 		// if the type is complex (TypeVector), the limit is the size.
+ 		// TODO: Generalize a list of complex objects
+ 		isComplex := false
+-		if _, ok := innerObj.typ.(*Bytes); ok {
+-			// TypeVector alias
+-			isComplex = true
+-		}
+ 
+ 		tmpl := `numItems := uint64(len(::.{{.name}}))
+ 		hh.MerkleizeWithMixin(subIndx, numItems, {{if .isComplex}} {{.listSize}} {{ else }} ssz.CalculateLimit({{.listSize}}, numItems, {{.elemSize}}) {{ end }})`

@@ -26,6 +26,13 @@ func (a *GenericAnalyzer) GetDomains(instance interface{}) ([]domains.Domain, er
 	typ := val.Type()
 
 	var results []domains.Domain
+	lastExported := -1
+	for i := 0; i < typ.NumField(); i++ {
+		f := typ.Field(i)
+		if f.PkgPath == "" && !strings.HasPrefix(f.Name, "_") {
+			lastExported = i
+		}
+	}
 
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
@@ -81,12 +88,16 @@ func (a *GenericAnalyzer) GetDomains(instance interface{}) ([]domains.Domain, er
 			sliceLengthBuckets := make([]domains.Bucket, len(SliceLengthBuckets))
 			copy(sliceLengthBuckets, SliceLengthBuckets) // Copy to avoid modifying global
 
-			// Resolve MaxLen and other length buckets based on ssz-max tag
+			// Resolve MaxLen and other length buckets based on ssz-max tag.
+			// For bitlists, ssz-max is in bits, so convert to a byte length cap.
 			resolvedMaxLen := uint64(math.MaxUint64) // Default to max possible
 			if tag := field.Tag.Get("ssz-max"); tag != "" {
 				if m, err := strconv.Atoi(tag); err == nil {
 					resolvedMaxLen = uint64(m)
 				}
+			}
+			if field.Tag.Get("ssz") == "bitlist" && resolvedMaxLen != math.MaxUint64 {
+				resolvedMaxLen = (resolvedMaxLen + 7) / 8
 			}
 
 			// Adjust all slice length buckets based on resolvedMaxLen
@@ -155,6 +166,27 @@ func (a *GenericAnalyzer) GetDomains(instance interface{}) ([]domains.Domain, er
 					Buckets:     ContainerDefaultBucket,
 				})
 			}
+
+			if field.Tag.Get("ssz") == "bitlist" {
+				domain.Aspects = append(domain.Aspects, domains.FieldAspect{
+					ID:          "BitlistSentinel",
+					Description: fmt.Sprintf("Sentinel handling for bitlist %s", fieldName),
+					Buckets: []domains.Bucket{
+						{
+							ID:          "Canonical",
+							Description: "Keep canonical sentinel bit",
+							Range:       domains.Range{Min: 0, Max: 0},
+							Tag:         "canonical",
+						},
+						{
+							ID:          "NullSentinel",
+							Description: "Force missing sentinel bit (null last byte)",
+							Range:       domains.Range{Min: 0, Max: 0},
+							Tag:         "bug",
+						},
+					},
+				})
+			}
 		case reflect.Struct:
 			// Default recursion
 			domain.Aspects = append(domain.Aspects, domains.FieldAspect{
@@ -167,6 +199,14 @@ func (a *GenericAnalyzer) GetDomains(instance interface{}) ([]domains.Domain, er
 				ID:          "Default",
 				Description: fmt.Sprintf("Fallback default for %s", fieldName),
 				Buckets:     ContainerDefaultBucket,
+			})
+		}
+
+		if i == lastExported {
+			domain.Aspects = append(domain.Aspects, domains.FieldAspect{
+				ID:          "Tail",
+				Description: fmt.Sprintf("Trailing bytes after %s", fieldName),
+				Buckets:     TailBuckets,
 			})
 		}
 

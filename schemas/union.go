@@ -110,6 +110,22 @@ type HardUnionStruct struct {
 	Payload DebugUnion
 }
 
+// UnionWideStruct expands padding to make tail bugs harder to reach.
+type UnionWideStruct struct {
+	Magic   uint32
+	Padding [4096]byte
+	Payload DebugUnion
+}
+
+// UnionScatterStruct interleaves fixed fields before the union payload.
+type UnionScatterStruct struct {
+	Magic    uint32
+	PaddingA [64]byte
+	Tag      uint64
+	PaddingB [256]byte
+	Payload  DebugUnion
+}
+
 func (u *UnionStruct) MarshalSSZ() ([]byte, error) {
 	return marshalUnionContainer(u.Magic, u.Padding[:], &u.Payload)
 }
@@ -191,6 +207,121 @@ func (u *HardUnionStruct) HashTreeRootWith(hh ssz.HashWalker) error {
 }
 
 func (u *HardUnionStruct) GetTree() (*ssz.Node, error) {
+	return ssz.ProofTree(u)
+}
+
+func (u *UnionWideStruct) MarshalSSZ() ([]byte, error) {
+	return marshalUnionContainer(u.Magic, u.Padding[:], &u.Payload)
+}
+
+func (u *UnionWideStruct) MarshalSSZTo(dst []byte) ([]byte, error) {
+	return marshalUnionContainerTo(dst, u.Magic, u.Padding[:], &u.Payload)
+}
+
+func (u *UnionWideStruct) SizeSSZ() int {
+	return 4 + len(u.Padding) + u.Payload.SizeSSZ()
+}
+
+func (u *UnionWideStruct) HashTreeRoot() ([32]byte, error) {
+	return ssz.HashWithDefaultHasher(u)
+}
+
+func (u *UnionWideStruct) UnmarshalSSZ(buf []byte) error {
+	return unmarshalUnionContainer(buf, &u.Magic, u.Padding[:], &u.Payload)
+}
+
+func (u *UnionWideStruct) UnmarshalSSZTail(buf []byte) ([]byte, error) {
+	if err := u.UnmarshalSSZ(buf); err != nil {
+		return nil, err
+	}
+	return []byte{}, nil
+}
+
+func (u *UnionWideStruct) HashTreeRootWith(hh ssz.HashWalker) error {
+	indx := hh.Index()
+	hh.PutUint32(u.Magic)
+	hh.PutBytes(u.Padding[:])
+	if err := u.Payload.HashTreeRootWith(hh); err != nil {
+		return err
+	}
+	hh.Merkleize(indx)
+	return nil
+}
+
+func (u *UnionWideStruct) GetTree() (*ssz.Node, error) {
+	return ssz.ProofTree(u)
+}
+
+func (u *UnionScatterStruct) MarshalSSZ() ([]byte, error) {
+	payloadBytes, err := u.Payload.MarshalSSZ()
+	if err != nil {
+		return nil, err
+	}
+	dst := make([]byte, 0, 4+len(u.PaddingA)+8+len(u.PaddingB)+len(payloadBytes))
+	dst = ssz.MarshalValue(dst, u.Magic)
+	dst = append(dst, u.PaddingA[:]...)
+	dst = ssz.MarshalValue(dst, u.Tag)
+	dst = append(dst, u.PaddingB[:]...)
+	dst = append(dst, payloadBytes...)
+	return dst, nil
+}
+
+func (u *UnionScatterStruct) MarshalSSZTo(dst []byte) ([]byte, error) {
+	payloadBytes, err := u.Payload.MarshalSSZ()
+	if err != nil {
+		return dst, err
+	}
+	dst = ssz.MarshalValue(dst, u.Magic)
+	dst = append(dst, u.PaddingA[:]...)
+	dst = ssz.MarshalValue(dst, u.Tag)
+	dst = append(dst, u.PaddingB[:]...)
+	dst = append(dst, payloadBytes...)
+	return dst, nil
+}
+
+func (u *UnionScatterStruct) SizeSSZ() int {
+	return 4 + len(u.PaddingA) + 8 + len(u.PaddingB) + u.Payload.SizeSSZ()
+}
+
+func (u *UnionScatterStruct) HashTreeRoot() ([32]byte, error) {
+	return ssz.HashWithDefaultHasher(u)
+}
+
+func (u *UnionScatterStruct) UnmarshalSSZ(buf []byte) error {
+	minSize := 4 + len(u.PaddingA) + 8 + len(u.PaddingB) + 1
+	if len(buf) < minSize {
+		return ssz.ErrSize
+	}
+
+	u.Magic, buf = ssz.UnmarshallValue[uint32](buf)
+	buf = ssz.UnmarshalFixedBytes(u.PaddingA[:], buf)
+	u.Tag, buf = ssz.UnmarshallValue[uint64](buf)
+	buf = ssz.UnmarshalFixedBytes(u.PaddingB[:], buf)
+
+	return u.Payload.UnmarshalSSZ(buf)
+}
+
+func (u *UnionScatterStruct) UnmarshalSSZTail(buf []byte) ([]byte, error) {
+	if err := u.UnmarshalSSZ(buf); err != nil {
+		return nil, err
+	}
+	return []byte{}, nil
+}
+
+func (u *UnionScatterStruct) HashTreeRootWith(hh ssz.HashWalker) error {
+	indx := hh.Index()
+	hh.PutUint32(u.Magic)
+	hh.PutBytes(u.PaddingA[:])
+	hh.PutUint64(u.Tag)
+	hh.PutBytes(u.PaddingB[:])
+	if err := u.Payload.HashTreeRootWith(hh); err != nil {
+		return err
+	}
+	hh.Merkleize(indx)
+	return nil
+}
+
+func (u *UnionScatterStruct) GetTree() (*ssz.Node, error) {
 	return ssz.ProofTree(u)
 }
 

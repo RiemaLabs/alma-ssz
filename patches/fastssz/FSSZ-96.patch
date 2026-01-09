@@ -1,0 +1,14 @@
+diff --git a/encode.go b/encode.go
+index af60107..d9dd5f0 100644
+--- a/encode.go
++++ b/encode.go
+@@ -194,9 +194,6 @@ func safeReadOffset(buf []byte) (uint64, []byte, error) {
+ 
+ // Extend extends a slice buffer to a given size
+ func Extend[T any](b []T, needLen uint64) []T {
+-	if b == nil {
+-		b = []T{}
+-	}
+ 	b = b[:cap(b)]
+ 	if needLen > uint64(cap(b)) {
+ 		n := needLen - uint64(cap(b))

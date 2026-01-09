@@ -1,209 +1,156 @@
 package rl
 
-import (
-	"math"
-	"math/rand"
-)
+import "math/rand"
 
-// PolicyAgent represents an RL agent that learns a policy.
+// PolicyAgent represents a lightweight bandit-style agent that learns action values.
 type PolicyAgent struct {
 	actionSize int
-	policyNet  *NeuralNetwork
-	optimizer  *Optimizer
-	memory     []*Experience
-	gamma      float64 // Discount factor
 	epsilon    float64 // Exploration rate
-	IsBaseline bool    // New: Flag to indicate if agent is in baseline mode
-}
+	minEpsilon float64
+	decay      float64
+	ucbC       float64
+	valueAlpha float64
+	IsBaseline bool // New: Flag to indicate if agent is in baseline mode
+	NoRL       bool // New: Disable learning while keeping structured actions
 
-// Experience stores an agent's experience.
-type Experience struct {
-	Observation Observation
-	Action      Action
-	Reward      float64
-	Next        Observation
-	Done        bool
+	actionCounts []int
+	actionValues []float64
+	totalActions int
+	actionPrior  []float64
 }
 
 // NewPolicyAgent creates a new PolicyAgent.
-// obsSize controls the input dimensionality; if zero, the agent defaults to a bias-only policy.
-func NewPolicyAgent(actionSize int, isBaseline bool, obsSize int) *PolicyAgent {
-	if obsSize <= 0 {
-		obsSize = 1 // Avoid zero-sized networks so the agent can still learn a bias
-	}
-	policyNet := NewNeuralNetwork(obsSize, actionSize) // Input size is the length of the observation vector
-	optimizer := NewOptimizer(policyNet, 0.001)        // Learning rate
+// obsSize is reserved for future contextual features; the current agent is action-value based.
+func NewPolicyAgent(actionSize int, isBaseline bool, noRL bool, obsSize int) *PolicyAgent {
 	return &PolicyAgent{
-		actionSize: actionSize,
-		policyNet:  policyNet,
-		optimizer:  optimizer,
-		memory:     make([]*Experience, 0),
-		gamma:      0.5,  // Discount factor
-		epsilon:    0.9,  // Exploration rate for RL learning
-		IsBaseline: isBaseline,
+		actionSize:   actionSize,
+		epsilon:      0.15,
+		minEpsilon:   0.02,
+		decay:        0.99,
+		ucbC:         0.6,
+		valueAlpha:   0.2,
+		IsBaseline:   isBaseline,
+		NoRL:         noRL,
+		actionCounts: make([]int, actionSize),
+		actionValues: make([]float64, actionSize),
 	}
+}
+
+// SetActionPrior provides a fixed prior for action scoring.
+func (agent *PolicyAgent) SetActionPrior(prior []float64) {
+	if len(prior) == 0 {
+		return
+	}
+	agent.actionPrior = make([]float64, len(prior))
+	copy(agent.actionPrior, prior)
 }
 
 // Act selects an action based on the current observation.
 func (agent *PolicyAgent) Act(obs Observation) Action {
-	if agent.IsBaseline {
-		// In baseline mode, always explore (random actions)
+	if agent.IsBaseline || agent.NoRL {
+		// Baseline and NoRL both sample actions uniformly.
 		return Action{ID: rand.Intn(agent.actionSize)}
 	}
 	// Epsilon-greedy exploration for learning agent
 	if rand.Float64() < agent.epsilon {
-		// Explore: pick a random action ID
+		// Explore: sample using prior if available.
+		if idx, ok := agent.sampleByPrior(); ok {
+			return Action{ID: idx}
+		}
 		return Action{ID: rand.Intn(agent.actionSize)}
 	}
 
-	// Exploit: use the policy network
-	probs := agent.policyNet.Forward(obs.Vector)
-	actionID := Softmax(probs) // Softmax sampling gives action ID
-
-	return Action{ID: actionID}
-}
-
-// Softmax applies the softmax function to a slice of floats and samples an index.
-func Softmax(scores []float64) int {
-	expScores := make([]float64, len(scores))
-	var sumExp float64
-	for i, s := range scores {
-		expScores[i] = math.Exp(s)
-		sumExp += expScores[i]
+	// Exploit: weighted sampling over learned values + prior.
+	weights := make([]float64, agent.actionSize)
+	sum := 0.0
+	for i := 0; i < agent.actionSize; i++ {
+		prior := 0.0
+		if i < len(agent.actionPrior) {
+			prior = agent.actionPrior[i]
+		}
+		score := agent.actionValues[i] + prior
+		if score < 0 {
+			score = 0
+		}
+		weights[i] = score
+		sum += score
 	}
-
-	probabilities := make([]float64, len(scores))
-	for i, es := range expScores {
-		probabilities[i] = es / sumExp
+	if sum == 0 {
+		return Action{ID: rand.Intn(agent.actionSize)}
 	}
-
-	// Sample an action based on probabilities
-	r := rand.Float64()
-	var cumulativeProb float64
-	for i, p := range probabilities {
-		cumulativeProb += p
-		if r <= cumulativeProb {
-			return i
+	r := rand.Float64() * sum
+	for i, w := range weights {
+		r -= w
+		if r <= 0 {
+			return Action{ID: i}
 		}
 	}
-	return len(scores) - 1 // Fallback
+	return Action{ID: agent.actionSize - 1}
+}
+
+func (agent *PolicyAgent) sampleByPrior() (int, bool) {
+	if len(agent.actionPrior) == 0 {
+		return 0, false
+	}
+	sum := 0.0
+	for _, w := range agent.actionPrior {
+		if w > 0 {
+			sum += w
+		}
+	}
+	if sum == 0 {
+		return 0, false
+	}
+	r := rand.Float64() * sum
+	for i, w := range agent.actionPrior {
+		if w <= 0 {
+			continue
+		}
+		r -= w
+		if r <= 0 {
+			return i, true
+		}
+	}
+	return len(agent.actionPrior) - 1, true
 }
 
 // Remember stores an experience in the agent's memory.
 func (agent *PolicyAgent) Remember(obs Observation, action Action, reward float64, nextObs Observation, done bool) {
-	agent.memory = append(agent.memory, &Experience{
-		Observation: obs,
-		Action:      action,
-		Reward:      reward,
-		Next:        nextObs,
-		Done:        done,
-	})
+	agent.totalActions++
+	idx := action.ID
+	if idx < 0 || idx >= agent.actionSize {
+		return
+	}
+	agent.actionCounts[idx]++
+	if agent.actionCounts[idx] == 1 {
+		agent.actionValues[idx] = reward
+		return
+	}
+	alpha := agent.valueAlpha
+	agent.actionValues[idx] = (1.0-alpha)*agent.actionValues[idx] + alpha*reward
 }
 
 // ClearMemory clears the agent's memory.
 func (agent *PolicyAgent) ClearMemory() {
-	agent.memory = make([]*Experience, 0)
+	for i := range agent.actionCounts {
+		agent.actionCounts[i] = 0
+		agent.actionValues[i] = 0
+	}
+	agent.totalActions = 0
+	agent.epsilon = 0.25
 }
 
 // Learn updates the agent's policy based on experiences in memory.
-// This is a simplified REINFORCE-like update.
+// This uses epsilon decay for exploration control.
 func (agent *PolicyAgent) Learn() {
-	if agent.IsBaseline {
+	if agent.IsBaseline || agent.NoRL {
 		return // No learning in baseline mode
 	}
 
-	if len(agent.memory) == 0 {
-		return
-	}
-
-	// Calculate discounted rewards (returns)
-	returns := make([]float64, len(agent.memory))
-	var g float64
-	for i := len(agent.memory) - 1; i >= 0; i-- {
-		exp := agent.memory[i]
-		g = exp.Reward + agent.gamma*g // Simple accumulation, not full TD
-		returns[i] = g
-	}
-
-	// Normalize returns (optional, but often helps stability)
-	mean := 0.0
-	for _, r := range returns {
-		mean += r
-	}
-	mean /= float64(len(returns))
-
-	std := 0.0
-	for _, r := range returns {
-		std += math.Pow(r-mean, 2)
-	}
-	std = math.Sqrt(std/float64(len(returns))) + 1e-8 // Add epsilon for stability
-
-	for i, exp := range agent.memory {
-		// Calculate advantage (return - baseline)
-		advantage := (returns[i] - mean) / std
-
-		// Update policy network
-		agent.optimizer.Train(exp.Observation.Vector, exp.Action.ID, advantage)
-	}
-
-	// Decrease epsilon over time for less exploration
-	if agent.epsilon > 0.01 {
-		agent.epsilon *= 0.999 // Decay rate
-	}
-}
-
-// Simplified NeuralNetwork (for policy approximation)
-type NeuralNetwork struct {
-	inputSize  int
-	outputSize int
-	weights    [][]float64 // Single layer for simplicity
-	biases     []float64
-}
-
-// NewNeuralNetwork creates a simple feed-forward network.
-func NewNeuralNetwork(input, output int) *NeuralNetwork {
-	weights := make([][]float64, input)
-	for i := range weights {
-		weights[i] = make([]float64, output)
-		for j := range weights[i] {
-			weights[i][j] = rand.NormFloat64() * 0.1 // Small random weights
+	if agent.epsilon > agent.minEpsilon {
+		agent.epsilon *= agent.decay
+		if agent.epsilon < agent.minEpsilon {
+			agent.epsilon = agent.minEpsilon
 		}
 	}
-	biases := make([]float64, output)
-	return &NeuralNetwork{input, output, weights, biases}
-}
-
-// Forward computes the network output (logits for actions).
-func (nn *NeuralNetwork) Forward(input []float64) []float64 {
-	output := make([]float64, nn.outputSize)
-	for j := 0; j < nn.outputSize; j++ {
-		var sum float64
-		for i := 0; i < nn.inputSize; i++ {
-			sum += input[i] * nn.weights[i][j]
-		}
-		output[j] = sum + nn.biases[j]
-	}
-	return output
-}
-
-// Optimizer (simplified gradient descent for REINFORCE)
-type Optimizer struct {
-	net        *NeuralNetwork
-	learningRate float64
-}
-
-// NewOptimizer creates an optimizer for the policy network.
-func NewOptimizer(net *NeuralNetwork, lr float64) *Optimizer {
-	return &Optimizer{net, lr}
-}
-
-// Train updates network weights based on advantage.
-// This is a very simplified update rule, proportional to the advantage and action probability.
-func (opt *Optimizer) Train(observation []float64, actionIdx int, advantage float64) {
-	// For simplicity, directly adjust weights towards the chosen action
-	// This is a heuristic, not a formal gradient calculation for Softmax
-	for i := 0; i < opt.net.inputSize; i++ {
-		opt.net.weights[i][actionIdx] += opt.learningRate * observation[i] * advantage
-	}
-	opt.net.biases[actionIdx] += opt.learningRate * advantage
 }

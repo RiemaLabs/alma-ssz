@@ -1,0 +1,19 @@
+diff --git a/sszgen/generator/unmarshal.go b/sszgen/generator/unmarshal.go
+index 3c19c2f..25f979f 100644
+--- a/sszgen/generator/unmarshal.go
++++ b/sszgen/generator/unmarshal.go
+@@ -412,12 +412,6 @@ func (v *Value) createSlice(useNumVariable bool) string {
+ 	case *Bytes:
+ 		if !isVectorCreate {
+ 			return ""
+ 		}
+-
+-		// Check for a type alias.
+-		ref := inner.objRef()
+-		if ref != "" {
+-			return fmt.Sprintf("::.%s = make([]%s, %s)", v.name, ref, size)
+-		}
+ 
+ 		if obj.IsFixed() {
+ 			return fmt.Sprintf("::.%s = make([][%s]byte, %s)", v.name, obj.Size.MarshalTemplate(), size)
+ 		}

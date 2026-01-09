@@ -1,0 +1,17 @@
+diff --git a/sszgen/generator/generator.go b/sszgen/generator/generator.go
+index 36ff697..b63a0e5 100644
+--- a/sszgen/generator/generator.go
++++ b/sszgen/generator/generator.go
+@@ -681,12 +681,6 @@ func decodeASTImports(file *ast.File) []*astImport {
+ }
+ 
+ func (e *env) getRawItemByName(name string) (*astStruct, bool) {
+-	// try to find the type in the generic params of the struct (if any)
+-	for paramName, paramTyp := range e.current.paramTypes {
+-		if paramName == name {
+-			return &astStruct{name: name, typ: paramTyp}, true
+-		}
+-	}
+ 	// try to find the type in any of the other imported structs or aliases
+ 	for _, item := range e.raw {
+ 		if item.name == name {

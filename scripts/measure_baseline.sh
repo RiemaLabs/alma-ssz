@@ -1,6 +1,6 @@
 #!/bin/bash
 # Usage: ./scripts/measure_baseline.sh <bug_name> [hard]
-# bug_name: bitvector, boolean, gap
+# bug_name: bitvector, boolean, bitlist, gap
 # hard: (optional) if "hard", run hard version
 
 BUG=$1
@@ -15,6 +15,7 @@ if [ "$MODE" == "hard" ]; then
     case "$BUG" in
         bitvector) TARGET="FuzzHardBitvectorBug" ;;
         boolean)   TARGET="FuzzHardBooleanBug" ;;
+        bitlist)   TARGET="FuzzBitlistBug" ;;
         gap)       TARGET="FuzzHardGapBug" ;;
         *) echo "Unknown bug: $BUG"; exit 1 ;;
     esac
@@ -22,6 +23,7 @@ else
     case "$BUG" in
         bitvector) TARGET="FuzzBitvectorBug" ;;
         boolean)   TARGET="FuzzBooleanBug" ;;
+        bitlist)   TARGET="FuzzBitlistBug" ;;
         gap)       TARGET="FuzzGapBug" ;;
         *) echo "Unknown bug: $BUG"; exit 1 ;;
     esac
@@ -38,7 +40,7 @@ echo ">> Activating bug..."
 
 # Regenerate SSZ code to propagate generator changes
 echo ">> Regenerating SSZ code..."
-go run workspace/fastssz/sszgen/main.go --path fuzz/schemas --objs BitvectorStruct,BooleanStruct,GapStruct,HardBitvectorStruct,HardBooleanStruct,HardGapStruct > /dev/null 2>&1
+go run workspace/fastssz/sszgen/main.go --path fuzz/schemas --objs BitvectorStruct,BooleanStruct,BitlistStruct,GapStruct,HardBitvectorStruct,HardBooleanStruct,HardGapStruct > /dev/null 2>&1
 
 # --- CRITICAL CHANGE: Clean corpus before fuzzing ---
 FUZZ_CORPUS_DIR="fuzz/schemas/testdata/$TARGET"

@@ -1,0 +1,72 @@
+diff --git a/sszgen/generator/hash.go b/sszgen/generator/hash.go
+index 1a48036..a63edc0 100755
+--- a/sszgen/generator/hash.go
++++ b/sszgen/generator/hash.go
+@@ -136,10 +136,6 @@ func (v *Value) hashTreeRoot(name string, appendBytes bool) string {
+ 		return v.hashTreeRootContainer(false)
+ 
+ 	case *Uint:
+-		if v.ref != "" || v.obj != "" {
+-			// alias to uint*
+-			name = fmt.Sprintf("%s(%s)", uintVToLowerCaseName2(obj), name)
+-		}
+ 		bitLen := obj.Size * 8
+ 		return fmt.Sprintf("hh.PutUint%d(%s)", bitLen, name)
+ 
+diff --git a/sszgen/generator/marshal.go b/sszgen/generator/marshal.go
+index b0bc8ba..5665bf9 100644
+--- a/sszgen/generator/marshal.go
++++ b/sszgen/generator/marshal.go
+@@ -53,14 +53,7 @@ func (v *Value) marshal() string {
+ 		})
+ 
+ 	case *Uint:
+-		var name string
+-		if v.ref != "" || v.obj != "" {
+-			// alias to uint*
+-			name = fmt.Sprintf("%s(::.%s)", uintVToLowerCaseName2(obj), v.name)
+-		} else {
+-			name = "::." + v.name
+-		}
+-		return fmt.Sprintf("dst = ssz.MarshalValue(dst, %s)", name)
++		return fmt.Sprintf("dst = ssz.MarshalValue(dst, ::.%s)", v.name)
+ 
+ 	case *BitList:
+ 		return fmt.Sprintf("%sdst = append(dst, ::.%s...)", v.validate(), v.name)
+diff --git a/sszgen/generator/unmarshal.go b/sszgen/generator/unmarshal.go
+index 635adce..57c60df 100644
+--- a/sszgen/generator/unmarshal.go
++++ b/sszgen/generator/unmarshal.go
+@@ -68,29 +68,10 @@ func (v *Value) unmarshal(dst string) string {
+ 
+ 	case *Uint:
+ 		intType := uintVToLowerCaseName2(obj)
+-
+-		var objRef string
+-		if v.ref != "" {
+-			objRef = v.objRef()
+-		} else if v.obj != "" {
+-			objRef = v.obj
+-		}
+-
+-		var tmpl string
+-		if objRef != "" {
+-			tmpl = `{
+-				var val {{.type}}
+-				val, buf = ssz.UnmarshallValue[{{.type}}](buf)
+-				::.{{.name}} = {{.objRef}}(val)
+-			}`
+-		} else {
+-			tmpl = `::.{{.name}}, buf = ssz.UnmarshallValue[{{.type}}](buf)`
+-		}
+-
++		tmpl := `::.{{.name}}, buf = ssz.UnmarshallValue[{{.type}}](buf)`
+ 		return execTmpl(tmpl, map[string]interface{}{
+-			"name":   v.name,
+-			"type":   intType,
+-			"objRef": objRef,
++			"name": v.name,
++			"type": intType,
+ 		})
+ 
+ 	case *Bool:

@@ -18,6 +18,7 @@ const (
 	MutationOffset
 	MutationGap // Insert bytes to create gap
 	MutationTail
+	MutationBitlistNull
 )
 
 type Mutation struct {
@@ -98,13 +99,30 @@ func (c *Concretizer) concretizeStruct(structVal reflect.Value, matrix *encoding
 				}
 			} else {
 				// Default behavior if aspect not explicitly chosen
-				if aspect.ID == "ElementValue" && fieldVal.Kind() == reflect.Array && fieldVal.Len() == 1 && fieldVal.Index(0).Kind() == reflect.Uint8 {
-					// Default bitvector ([1]byte) to zero byte unless explicitly chosen.
-					chosenBucket = domains.Bucket{ID: "DefaultZero", Range: domains.Range{Min: 0, Max: 0}}
-				} else if len(aspect.Buckets) > 0 {
-					chosenBucket = aspect.Buckets[rand.Intn(len(aspect.Buckets))] // Random default for other aspects
-				} else {
-					chosenBucket = domains.Bucket{ID: "Default", Range: domains.Range{Min: 0, Max: 0}} // Fallback empty bucket
+				if aspect.ID == "Offset" {
+					for _, b := range aspect.Buckets {
+						if b.ID == "CanonicalOffset" {
+							chosenBucket = b
+							break
+						}
+					}
+				} else if aspect.ID == "Tail" {
+					for _, b := range aspect.Buckets {
+						if b.ID == "NoTail" {
+							chosenBucket = b
+							break
+						}
+					}
+				}
+				if chosenBucket.ID == "" {
+					if aspect.ID == "ElementValue" && fieldVal.Kind() == reflect.Array && fieldVal.Len() == 1 && fieldVal.Index(0).Kind() == reflect.Uint8 {
+						// Default bitvector ([1]byte) to zero byte unless explicitly chosen.
+						chosenBucket = domains.Bucket{ID: "DefaultZero", Range: domains.Range{Min: 0, Max: 0}}
+					} else if len(aspect.Buckets) > 0 {
+						chosenBucket = aspect.Buckets[rand.Intn(len(aspect.Buckets))] // Random default for other aspects
+					} else {
+						chosenBucket = domains.Bucket{ID: "Default", Range: domains.Range{Min: 0, Max: 0}} // Fallback empty bucket
+					}
 				}
 			}
 
@@ -132,7 +150,7 @@ func (c *Concretizer) applyAspect(val reflect.Value, aspectID domains.AspectID, 
 		}
 	case "ElementValue":
 		// Special handling for dirty padding candidates
-		if bucket.ID == "HighRange" {
+		if bucket.ID == "HighRange" && val.Kind() == reflect.Array && val.Len() == 1 && val.Type().Elem().Kind() == reflect.Uint8 {
 			// For a dirty padding test, we set a clean value in the struct,
 			// and return a mutation to make it dirty after marshalling.
 			if err := c.setElementValue(val, domains.Range{Min: 1, Max: 1}); err != nil { // Set a clean 'true' like value
@@ -186,6 +204,34 @@ func (c *Concretizer) applyAspect(val reflect.Value, aspectID domains.AspectID, 
 				Type:      MutationGap,
 				FieldName: fieldStruct.Name,
 				GapSize:   gapSize,
+			})
+		}
+	case "Tail":
+		tailLen := int(bucket.Range.Min)
+		if bucket.Range.Max > bucket.Range.Min {
+			diff := bucket.Range.Max - bucket.Range.Min
+			if diff > 0 {
+				tailLen = int(bucket.Range.Min + uint64(rand.Intn(int(diff+1))))
+			}
+		}
+		if tailLen <= 0 {
+			return mutations, nil
+		}
+		if tailLen > 64 {
+			tailLen = 64
+		}
+		tail := make([]byte, tailLen)
+		rand.Read(tail)
+		mutations = append(mutations, Mutation{
+			Type:      MutationTail,
+			FieldName: fieldStruct.Name,
+			Value:     tail,
+		})
+	case "BitlistSentinel":
+		if bucket.ID == "NullSentinel" {
+			mutations = append(mutations, Mutation{
+				Type:      MutationBitlistNull,
+				FieldName: fieldStruct.Name,
 			})
 		}
 	case "Default": // For structs/arrays of structs, default means recurse
@@ -372,12 +418,11 @@ func (c *Concretizer) setLength(val reflect.Value, r domains.Range, fieldStruct 
 				}
 			}
 		}
-		length = int(sampleLen)
-
-		// Cap length for MVP to avoid huge allocs
-		if length > 1024 { // Cap to 1024 to prevent out-of-memory for very large random lengths
-			length = 1024
+		// Cap length before converting to int to avoid overflow/negative lengths.
+		if sampleLen > 1024 {
+			sampleLen = 1024
 		}
+		length = int(sampleLen)
 	}
 
 	// Make slice with chosen length

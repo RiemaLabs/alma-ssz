@@ -16,8 +16,14 @@ type RLOpts struct {
 	SchemaName          string // Name of the schema to fuzz, e.g., "BeaconState"
 	BatchSize           int    // Number of inputs per step
 	IsBaseline          bool   // New: Flag to indicate baseline mode
+	NoRL                bool   // Disable policy learning while keeping SGIA buckets
 	D_ctx               int    // New: Dimensionality of the observation context for the RL agent
 	RequireBitvectorBug bool   // Only stop when Bitvector dirty padding bug is hit
+	ExternalOracle      string // External oracle identifier (e.g., "pyssz")
+	ExternalBug         string // External bug toggle id
+	DisableTail         bool   // Disable tail mutations
+	DisableGap          bool   // Disable offset-gap mutations
+	EnableBitlistNull   bool   // Enable null-sentinel bitlist mutation
 }
 
 // RLAgent defines the interface for an agent that interacts with the fuzzing environment.
@@ -31,7 +37,7 @@ type RLAgent interface {
 // RunRLProcess sets up and runs the RL-based fuzzer.
 func RunRLProcess(targetSchema ssz.Unmarshaler, opts RLOpts) {
 	// 1. Setup Environment
-	env, err := NewFuzzingEnv(targetSchema, opts.MaxSteps, opts.BatchSize, opts.D_ctx, opts.IsBaseline, opts.RequireBitvectorBug)
+	env, err := NewFuzzingEnv(targetSchema, opts)
 	if err != nil {
 		fmt.Printf("Error creating fuzzing environment: %v\n", err)
 		return
@@ -46,7 +52,14 @@ func RunRLProcess(targetSchema ssz.Unmarshaler, opts RLOpts) {
 		fallthrough
 	case "policy": // Use our new PolicyAgent
 		obsSize := len(env.CurrentState.ToObservation().Vector)
-		agent = NewPolicyAgent(env.EncodingCtx.ActionCount(), opts.IsBaseline, obsSize) // Pass opts.IsBaseline
+		agent = NewPolicyAgent(env.EncodingCtx.ActionCount(), opts.IsBaseline, opts.NoRL, obsSize)
+		if policy, ok := agent.(*PolicyAgent); ok {
+			bvSet := make(map[string]struct{}, len(env.BitvectorFields))
+			for _, name := range env.BitvectorFields {
+				bvSet[name] = struct{}{}
+			}
+			policy.SetActionPrior(BuildActionPrior(env.EncodingCtx.Actions, bvSet))
+		}
 	default:
 		fmt.Printf("Unknown agent type: %s\n", opts.AgentType)
 		return

@@ -1,0 +1,45 @@
+diff --git a/sszgen/generator/unmarshal.go b/sszgen/generator/unmarshal.go
+index 635adce..4b620f3 100644
+--- a/sszgen/generator/unmarshal.go
++++ b/sszgen/generator/unmarshal.go
+@@ -36,13 +36,29 @@ func (v *Value) unmarshal(dst string) string {
+ 			return fmt.Sprintf("buf = ssz.UnmarshalFixedBytes(::.%s[:], buf)", v.name)
+ 		}
+ 
++		refName := ""
++		if v.ref != "" {
++			refName = v.ref + "." + v.obj
++		}
++
+ 		// both fixed and dynamic are decoded equally
+ 		var tmpl string
+ 		if !v.isFixed() {
+ 			// dynamic bytes, we need to validate the size of the buffer
+-			tmpl = `if ::.{{.name}}, err = ssz.UnmarshalDynamicBytes(::.{{.name}}, {{.dst}}, {{.size}}); err != nil {
+-			return
+-			}`
++			if refName != "" {
++				tmpl = `if len({{.dst}}) > {{.size}} {
++				err = ssz.ErrBytesLength
++				return
++			}
++			if cap(::.{{.name}}) == 0 {
++				{{if .refName}} ::.{{.name}} = {{ .refName }}(make([]byte, 0, len({{.dst}}))) {{ else }} ::.{{.name}} = make([]byte, 0, len({{.dst}})) {{ end }}
++			}
++			::.{{.name}} = append(::.{{.name}}, {{.dst}}...)`
++			} else {
++				tmpl = `if ::.{{.name}}, err = ssz.UnmarshalDynamicBytes(::.{{.name}}, {{.dst}}, {{.size}}); err != nil {
++				return
++				}`
++			}
+ 		} else {
+ 			tmpl = `::.{{.name}}, buf = ssz.UnmarshalBytes(::.{{.name}}, buf, {{.size}})`
+ 		}
+@@ -53,6 +69,7 @@ func (v *Value) unmarshal(dst string) string {
+ 			"size":  obj.Size,
+ 			"isRef": v.ref != "",
+ 			"obj":   v,
++			"refName": refName,
+ 		})
+ 
+ 	case *BitList:

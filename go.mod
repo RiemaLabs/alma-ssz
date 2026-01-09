@@ -4,8 +4,8 @@ go 1.25.1
 
 replace (
 	alma.local/ssz => .
-	github.com/ferranbt/fastssz => ./workspace/fastssz
-	github.com/ferranbt/fastssz v1.0.0 => ./workspace/fastssz
+	github.com/ferranbt/fastssz => ./workspace/fastssz_bench
+	github.com/ferranbt/fastssz v1.0.0 => ./workspace/fastssz_bench
 )
 
 replace github.com/prysmaticlabs/prysm/v5 => ./workspace/prysm
