@@ -391,15 +391,10 @@ func (env *FuzzingEnv) Step(actions []Action) (*State, float64, bool, int, error
 		batchReward += 100.0 // High reward for finding a bug in the batch
 	}
 
-	// R^KL_t: Calculate KL score for the entire batch's traces
-	klScore := 0.0
-	for _, trace := range batchTraces {
-		// We update the KLAnalyzer with all traces from the batch *before* scoring,
-		// or rather, we score each trace against the *current* global model.
-		// For the Pipeline, it sounds like Q_t (current batch distribution) vs P_hist (history).
-		// For simplicity, we use the Analyzer's existing ScoreTrace which does trace-by-trace update.
-		klScore += env.KLAnalyzer.ScoreTrace(trace, true) // Score and update global model
-	}
+	// R^KL_t: Calculate KL score for the entire batch's traces.
+	// The analyzer computes KL divergence between the current batch distribution
+	// and the historical distribution, then updates the global model.
+	klScore := env.KLAnalyzer.ScoreBatch(batchTraces, true)
 	// Average KL score per input
 	avgKLScore := klScore / float64(env.BatchSize)
 

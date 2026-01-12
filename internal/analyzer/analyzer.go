@@ -38,13 +38,15 @@ func (h *Histogram) Probability(val int64) float64 {
 
 // Analyzer manages the global statistical model.
 type Analyzer struct {
-	Model map[uint64]*Histogram
-	mu    sync.RWMutex
+	Model       map[uint64]*Histogram
+	totalEvents uint64
+	mu          sync.RWMutex
 }
 
 func NewAnalyzer() *Analyzer {
 	return &Analyzer{
-		Model: make(map[uint64]*Histogram),
+		Model:       make(map[uint64]*Histogram),
+		totalEvents: 0,
 	}
 }
 
@@ -66,48 +68,66 @@ func (a *Analyzer) GetDimensions() []uint64 {
 	return keys
 }
 
-// ScoreTrace computes the KL Divergence (or simple surprise score) of a trace
-// against the global model.
-// It returns a score (higher is more interesting).
+// ScoreTrace computes the KL divergence of a single trace against the global model.
 // It also updates the model if `update` is true.
 func (a *Analyzer) ScoreTrace(trace []TraceEntry, update bool) float64 {
+	return a.ScoreBatch([][]TraceEntry{trace}, update)
+}
+
+// ScoreBatch computes the KL divergence of a batch of traces against the global model.
+// The distribution is defined over (CID, value) pairs observed in the batch.
+// It also updates the model if `update` is true.
+func (a *Analyzer) ScoreBatch(traces [][]TraceEntry, update bool) float64 {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	totalSurprise := 0.0
+	type traceKey struct {
+		CID   uint64
+		Value int64
+	}
 
-	for _, entry := range trace {
-		hist, exists := a.Model[entry.CID]
-		if !exists {
-			// New Path! Highly interesting.
-			totalSurprise += 100.0
-			if update {
-				h := NewHistogram()
-				h.Add(entry.Value)
-				a.Model[entry.CID] = h
-			}
-			continue
-		}
-
-		// Existing path, check value divergence.
-		prob := hist.Probability(entry.Value)
-		if prob < 0.01 {
-			// Rare value!
-			// Self-information: I(x) = -log2(P(x))
-			// If prob is 0 (first time seeing this value), set prob to small epsilon
-			if prob == 0 {
-				prob = 0.0001
-			}
-			surprise := -math.Log2(prob)
-			totalSurprise += surprise
-		}
-
-		if update {
-			hist.Add(entry.Value)
+	batchCounts := make(map[traceKey]uint64)
+	var totalBatch uint64
+	for _, trace := range traces {
+		for _, entry := range trace {
+			key := traceKey{CID: entry.CID, Value: entry.Value}
+			batchCounts[key]++
+			totalBatch++
 		}
 	}
 
-	return totalSurprise
+	if totalBatch == 0 {
+		return 0.0
+	}
+
+	const alpha = 1.0
+	denomHist := float64(a.totalEvents) + alpha*float64(len(batchCounts))
+	kl := 0.0
+
+	for key, cnt := range batchCounts {
+		pBatch := float64(cnt) / float64(totalBatch)
+		var histCount uint64
+		if hist, ok := a.Model[key.CID]; ok {
+			histCount = hist.Counts[key.Value]
+		}
+		pHist := (float64(histCount) + alpha) / denomHist
+		kl += pBatch * math.Log(pBatch/pHist)
+	}
+
+	if update {
+		for key, cnt := range batchCounts {
+			hist, ok := a.Model[key.CID]
+			if !ok {
+				hist = NewHistogram()
+				a.Model[key.CID] = hist
+			}
+			hist.Counts[key.Value] += cnt
+			hist.Total += cnt
+		}
+		a.totalEvents += totalBatch
+	}
+
+	return kl
 }
 
 // TraceEntry duplicate from tracer to avoid cyclic imports if we were in same package
