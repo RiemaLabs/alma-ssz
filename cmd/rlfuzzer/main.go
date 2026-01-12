@@ -6,14 +6,15 @@ import (
 	"log"
 
 	"alma.local/ssz/rl"
-	"github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1" // Example schema, add others as needed
+	"alma.local/ssz/schemas"
+	ssz "github.com/ferranbt/fastssz"
 )
 
 var (
 	episodes   = flag.Int("episodes", 10, "Number of training episodes")
 	maxSteps   = flag.Int("max_steps", 100, "Maximum steps per episode")
 	agentType  = flag.String("agent_type", "policy", "Type of RL agent (e.g., 'policy')")
-	schemaName = flag.String("schema", "Attestation", "Name of the SSZ schema to fuzz (e.g., 'Attestation', 'BeaconBlockBody')")
+	schemaName = flag.String("schema", "BeaconState", "Name of the SSZ schema to fuzz (e.g., 'BeaconState', 'BitvectorStruct')")
 	batchSize  = flag.Int("batch_size", 10, "Number of inputs to process per step (batch size)")
 )
 
@@ -21,18 +22,22 @@ func main() {
 	flag.Parse()
 
 	// Map schema name to actual Go type
-	var targetSchema fastssz.Unmarshaler
+	var targetSchema ssz.Unmarshaler
 	switch *schemaName {
-	case "Attestation":
-		targetSchema = &v1alpha1.Attestation{}
-	case "BeaconBlockBody":
-		targetSchema = &v1alpha1.BeaconBlockBody{}
-	case "SignedBeaconBlock":
-		targetSchema = &v1alpha1.SignedBeaconBlock{}
-	case "IndexedAttestation":
-		targetSchema = &v1alpha1.IndexedAttestation{}
+	case "BitvectorStruct":
+		targetSchema = &schemas.BitvectorStruct{}
+	case "BooleanStruct":
+		targetSchema = &schemas.BooleanStruct{}
+	case "GapStruct":
+		targetSchema = &schemas.GapStruct{}
+	case "AttestationData":
+		targetSchema = &schemas.AttestationData{}
+	case "PendingAttestation":
+		targetSchema = &schemas.PendingAttestation{}
+	case "BeaconBlockHeader":
+		targetSchema = &schemas.BeaconBlockHeader{}
 	case "BeaconState":
-		targetSchema = &v1alpha1.BeaconState{}
+		targetSchema = &schemas.BeaconState{}
 	default:
 		log.Fatalf("Unknown schema name: %s", *schemaName)
 	}

@@ -6,12 +6,11 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
-	"path/filepath"
 	"os"
+	"path/filepath"
 
 	"alma.local/ssz/internal/analyzer"
 	"github.com/ferranbt/fastssz/tracer"
-	ssz "github.com/ferranbt/fastssz"
 )
 
 // Metadata structure
@@ -72,9 +71,9 @@ func main() {
 		}
 
 		// Run target
-		// For now, we just call DemonstrateBranching with random bool
+		// For now, we just call demonstrateBranching with random bool
 		flag := rand.Intn(2) == 0
-		ssz.DemonstrateBranching(flag)
+		demonstrateBranching(flag)
 
 		// Collect
 		rawTrace := tracer.Snapshot()
@@ -101,7 +100,7 @@ func verifyBranching(az *analyzer.Analyzer) {
 
 	// Branch A
 	tracer.Reset()
-	ssz.DemonstrateBranching(true)
+	demonstrateBranching(true)
 	rawTraceA := tracer.Snapshot()
 	traceA := make([]analyzer.TraceEntry, len(rawTraceA))
 	for i, r := range rawTraceA {
@@ -115,7 +114,7 @@ func verifyBranching(az *analyzer.Analyzer) {
 	
 	// Branch B
 	tracer.Reset()
-	ssz.DemonstrateBranching(false)
+	demonstrateBranching(false)
 	rawTraceB := tracer.Snapshot()
 	traceB := make([]analyzer.TraceEntry, len(rawTraceB))
 	for i, r := range rawTraceB {
@@ -155,4 +154,16 @@ func savePoint(p Point) error {
 	
 	enc := json.NewEncoder(f)
 	return enc.Encode(p)
+}
+
+// demonstrateBranching emits branch-specific trace points for CSVV smoke tests.
+func demonstrateBranching(flag bool) {
+	var x int64
+	if flag {
+		x = 1
+		tracer.Record(tracer.Hash([]byte("csvv_branch_true_x")), x)
+		return
+	}
+	x = 0
+	tracer.Record(tracer.Hash([]byte("csvv_branch_false_x")), x)
 }
