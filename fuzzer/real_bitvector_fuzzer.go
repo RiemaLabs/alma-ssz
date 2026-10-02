@@ -9,14 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
-	"time" // Needed for rand.Seed
 
 	"alma.local/ssz/feedback" // Import feedback package
 )
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
 
 // RealBitvectorFuzzer implements the Fuzzer interface for the bitvector example.
 // It interacts with the Go test framework and bug toggling scripts.
@@ -42,9 +37,18 @@ func NewRealBitvectorFuzzer() (*RealBitvectorFuzzer, error) {
 }
 
 // Reset cleans up the temporary test directory and resets coverage metrics.
+// Failures are surfaced on stderr instead of being discarded: a fresh temp dir
+// can legitimately fail (no space, permissions, exhausted handles), and dropping
+// the error left fuzzTestDir empty, so every later generated test was written
+// into the current working directory and the whole fuzzer run was lost.
 func (rbf *RealBitvectorFuzzer) Reset() {
-	os.RemoveAll(rbf.fuzzTestDir)                                   // Clean up old dir
-	rbf.fuzzTestDir, _ = ioutil.TempDir("", "bitvector_fuzz_tests") // Create new one
+	os.RemoveAll(rbf.fuzzTestDir) // Clean up old dir
+	newDir, err := ioutil.TempDir("", "bitvector_fuzz_tests")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to recreate fuzzer temp dir: %v\n", err)
+		return
+	}
+	rbf.fuzzTestDir = newDir
 	rbf.tempTestCounter = 0
 	rbf.currentCoverage = 0.0
 	rbf.lastNewCoverage = 0.0
@@ -152,8 +156,10 @@ func (rbf *RealBitvectorFuzzer) Execute(sszBytes []byte) (signature feedback.Run
 	}
 	file.Close() // Close the file before executing go run.
 
-	// Defer cleanup of the temporary test file.
-	// defer os.Remove(testFileName) // Temporarily commented out for debugging
+	// Defer cleanup of the temporary test file. Left commented out, every
+	// iteration leaked one generated Go source file into the temp dir, which
+	// grows without bound across a long fuzzing campaign.
+	defer os.Remove(testFileName)
 
 	// --- Execute the test file ---
 	// 1. Activate the bitvector bug.
